@@ -1,9 +1,9 @@
 import request from "request";
+import env from "dotenv";
 
 const idop = (sandi) => {
-  const urlIDOP = "https://aviation.bmkg.go.id/idop/upload_api";
-  const tokenIDOP =
-    "e9625aec5fd79095a8a9114d67e8dcb0a4c47c264a76bc8b4bc7e1aadbbb1980";
+  const urlIDOP = "http://172.19.2.99/idop/upload_api";
+  const tokenIDOP = process.env.TOKEN_IDOP;
   const bearer = "Bearer " + tokenIDOP;
   var options = {
     method: "POST",
