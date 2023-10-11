@@ -1,0 +1,380 @@
+import mysql from "mysql2";
+import env from "dotenv";
+
+env.config();
+
+const send = (opmetData) => {
+  const data = opmetData;
+  data.forEach((e) => {
+    sendDB(e);
+  });
+};
+
+const sendDB = (data) => {
+  data.forEach((group) => {
+    const length = group.length;
+    if (length < 1) {
+      return group;
+    }
+    const header = group[0].split(" ");
+    const identifier = header[0];
+
+    if (identifier.startsWith("SA") || identifier.startsWith("SP")) {
+      try {
+        const metar = decodeOnebyOne(group, "METAR");
+      } catch (error) {
+        console.log(error);
+        // skip
+      }
+    }
+
+    if (identifier.startsWith("FT") || identifier.startsWith("FC")) {
+      try {
+        const taf = decodeOnebyOne(group, "TAF");
+      } catch (error) {
+        console.log(error);
+        // skip
+      }
+    }
+
+    if (identifier.startsWith("W")) {
+      try {
+        const sigmet = decodeOnebyOne(group, "SIGMET");
+      } catch (error) {
+        console.log(error);
+      }
+    }
+  });
+};
+
+const decodeOnebyOne = (group, typeBerita) => {
+  const sliceGroup = [[group[0]], group.slice(1)];
+  const header = sliceGroup[0][0].split(" ");
+
+  const identifier = header[0];
+
+  const type = identifier.substring(0, 2);
+  const regional = identifier.substring(2, 4);
+  const bulletin = identifier.substring(4, 6);
+
+  const center = header[1];
+  const datetime = header[2];
+  const date = datetime.substring(0, 2);
+
+  const dateNow = new Date();
+  let month = dateNow.getMonth() + 1;
+  if (month < 10) {
+    month = "0" + month;
+  }
+  let dateCurrent = dateNow.getDate();
+  if (dateCurrent < 10) {
+    dateCurrent = "0" + dateCurrent;
+  }
+
+  let hour = dateNow.getHours();
+  if (hour < 10) {
+    hour = "0" + hour;
+  }
+
+  let minute = dateNow.getMinutes();
+  if (minute < 10) {
+    minute = "0" + minute;
+  }
+  let year = dateNow.getFullYear();
+
+  const filling = `${year}-${month}-${date} ${datetime.substring(
+    2,
+    4
+  )}:${datetime.substring(4, 6)}`;
+
+  const datacode_date = `${year}-${month}-${date}`;
+
+  const insert = `${year}-${month}-${dateCurrent} ${hour}:${minute}`;
+  let extra = header[3] ?? "";
+
+  if (typeBerita == "METAR") {
+    sliceGroup[1].map((line) => {
+      const lineSplit = line.split(" ");
+      console.log("METAR ISI :" + lineSplit);
+      if (lineSplit[0] == "METAR" || lineSplit[0] == "SPECI") {
+        let icao = "";
+        if (lineSplit[1].length == 4) {
+          icao = lineSplit[1];
+        } else {
+          icao = lineSplit[2];
+        }
+
+        const wiorwa = lineSplit[1].substring(0, 2);
+        console.log("wiorwa :" + wiorwa);
+
+        const dataText = line;
+        let dataCode = datacode_date + dataText;
+        dataCode = dataCode
+          .replace(/-/g, "")
+          .replace(/:/g, "")
+          .replace(/\s/g, "");
+
+        dataCode = dataCode.substring(0, 254);
+        pool.query(
+          `INSERT INTO metar_speci (data_code, type_code, regional_code, bulletin_code, centre_code,filling_time,extra_code,icao_code,observed_time,data_text,insert_time) VALUES ('${dataCode}', '${type}', '${regional}', '${bulletin}', '${center}', '${filling}', '${extra}', '${icao}', '${filling}', '${dataText}', '${insert}')`,
+          (err, result) => {
+            console.log(result);
+          }
+        );
+
+        if (wiorwa == "WI" || wiorwa == "WA") {
+          //   send data to api
+        }
+      }
+    });
+  } else if (typeBerita == "TAF") {
+    sliceGroup[1].map((line) => {
+      line = line.toString();
+      const lineSplit = line.split(" ");
+      console.log("TAF ISI :" + lineSplit);
+
+      if (lineSplit.length < 2) return;
+      if (lineSplit.length < 3) return;
+      if (lineSplit.length < 4) return;
+      if (lineSplit[0] == "TAF") {
+        console.log("TAF ISI :" + lineSplit);
+        let icao = "";
+        if (lineSplit[1].length == 4) {
+          icao = lineSplit[1];
+        } else {
+          icao = lineSplit[2];
+        }
+        const dataText = line;
+        let dataCode = datacode_date + dataText;
+        dataCode = dataCode
+          .replace(/-/g, "")
+          .replace(/:/g, "")
+          .replace(/\s/g, "");
+        dataCode = dataCode.substring(0, 254);
+        let issuedTime = "";
+        if (lineSplit[2].length == 7) {
+          issuedTime = lineSplit[2];
+        } else {
+          issuedTime = lineSplit[3];
+        }
+        if (issuedTime && issuedTime.length == 7) {
+          let dateIssued = issuedTime.substring(0, 2);
+          let hourIssued = issuedTime.substring(2, 4);
+          let minuteIssued = issuedTime.substring(4, 6);
+          let compiledIssuedTime = `${year}-${month}-${dateIssued} ${hourIssued}:${minuteIssued}`;
+          let compiledValidFrom;
+          let compiledValidUntil;
+          let validity = "";
+          if (lineSplit[3].length == 9) {
+            validity = lineSplit[3];
+          } else {
+            validity = lineSplit[4];
+          }
+          if (validity && validity.length == 9) {
+            let dateValidFrom = validity.substring(0, 2);
+            let hourValidFrom = validity.substring(2, 4);
+            compiledValidFrom = `${year}-${month}-${dateValidFrom} ${hourValidFrom}:00`;
+            let dateValidUntil = validity.substring(5, 7);
+            let hourValidUntil = validity.substring(7, 9);
+            if (dateValidFrom > dateValidUntil) {
+              if (month == 12) {
+                month = "01";
+                year = parseInt(year);
+                year = year + 1;
+                year = year.toString();
+              } else {
+                month = parseInt(month) + 1;
+                month = month.toString();
+                if (month < 10) {
+                  month = "0" + month;
+                }
+              }
+            }
+            compiledValidUntil = `${year}-${month}-${dateValidUntil} ${hourValidUntil}:00`;
+          } else {
+            compiledValidFrom = null;
+            compiledValidUntil = null;
+          }
+          console.log("valid_from :" + compiledValidFrom);
+          console.log("valid_until :" + compiledValidUntil);
+          pool.query(
+            `INSERT INTO taf (
+          data_code,
+          type_code,
+          regional_code,
+          bulletin_code,
+          centre_code,
+          filling_time,
+          extra_code,
+          icao_code,
+          issued_time,
+          valid_from,
+          valid_until,
+          data_text,
+          insert_time) VALUES
+          ('${dataCode}',
+          '${type}',
+          '${regional}',
+          '${bulletin}',
+          '${center}',
+          '${filling}',
+          '${extra}',
+          '${icao}',
+          '${compiledIssuedTime}',
+          '${compiledValidFrom}',
+          '${compiledValidUntil}',
+          '${dataText}',
+          '${insert}')`,
+            (err, result) => {
+              console.log(result);
+              if (err) {
+                console.log(err);
+              }
+            }
+          );
+        }
+      }
+    });
+  } else if (typeBerita == "SIGMET") {
+    sliceGroup[1].map((line) => {
+      line = line.toString();
+      const lineSplit = line.split(" ");
+      console.log("SIGMET ISI :" + lineSplit);
+      if (lineSplit[1] == "SIGMET") {
+        let icao = center;
+        let ats_code = lineSplit[0];
+        let sequence_code = lineSplit[2];
+
+        const numbersInWord = sequence_code.match(/\d+/);
+
+        if (numbersInWord) {
+          sequence_code = numbersInWord[0];
+        }
+
+        const dataText = line;
+        let dataCode = datacode_date + dataText;
+        dataCode = dataCode
+          .replace(/-/g, "")
+          .replace(/:/g, "")
+          .replace(/\s/g, "");
+        dataCode = dataCode.substring(0, 254);
+        let validTime = "";
+
+        if (lineSplit[4].length == 13) {
+          validTime = lineSplit[4];
+        } else {
+          validTime = lineSplit[5];
+        }
+
+        if (validTime && validTime.length == 13) {
+          let splitValidTime = validTime.split("/");
+
+          const compiledValidFrom = `${year}-${month}-${splitValidTime[0].substring(
+            0,
+            2
+          )} ${splitValidTime[0].substring(2, 4)}:${splitValidTime[0].substring(
+            4,
+            6
+          )}`;
+
+          // check if date until less than from
+          let date_from = splitValidTime[0].substring(0, 2);
+          let date_until = splitValidTime[1].substring(0, 2);
+
+          if (parseInt(date_from) > parseInt(date_until)) {
+            if (parseInt(month) < 12) {
+              month = parseInt(month) + 1;
+              if (month < 10) {
+                month = "0" + month.toString();
+              }
+            } else {
+              month = "01";
+              year = parseInt(year);
+              year = year + 1;
+              year = year.toString();
+            }
+          }
+
+          const compiledValidUntil = `${year}-${month}-${splitValidTime[1].substring(
+            0,
+            2
+          )} ${splitValidTime[1].substring(2, 4)}:${splitValidTime[1].substring(
+            4,
+            6
+          )}`;
+
+          console.log("valid_until :" + compiledValidUntil);
+
+          pool.query(
+            `INSERT INTO sigmet (
+          data_code,
+          type_code,
+          regional_code,
+          bulletin_code,
+          centre_code,
+          filling_time,
+          extra_code,
+          ats_code,
+          sequence_code,
+          valid_from,
+          valid_until,
+          icao_code,
+          data_text,
+          insert_time) VALUES
+          ('${dataCode}',
+          '${type}',
+          '${regional}',
+          '${bulletin}',
+          '${center}',
+          '${filling}',
+          '${extra}',
+          '${ats_code}',
+          '${sequence_code}',
+          '${compiledValidFrom}',
+          '${compiledValidUntil}',
+          '${icao}',
+          '${dataText}',
+          '${insert}')`,
+            (err, result) => {
+              console.log(result);
+              if (err) {
+                console.log(err);
+              }
+            }
+          );
+        }
+      }
+    });
+  }
+};
+
+const pool = mysql.createPool({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASS,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT,
+  waitForConnections: true,
+  connectionLimit: 10,
+  maxIdle: 10, // max idle connections, the default value is the same as `connectionLimit`
+  idleTimeout: 60000, // idle connections timeout, in milliseconds, the default value 60000
+  queueLimit: 0,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0,
+});
+
+const getConnection = () => {
+  return new Promise((resolve, reject) => {
+    pool.getConnection((err, connection) => {
+      if (err) reject(err);
+      resolve(connection);
+    });
+  });
+};
+
+const sendDatabase = async (data) => {
+  const connection = await getConnection();
+  console.log("connected as id " + connection.threadId);
+};
+
+export default send;
