@@ -1,8 +1,11 @@
 import fs from "fs";
 import path from "path";
+import env from "dotenv";
+
+env.config();
 
 const opmet = () => {
-  const directoryPath = "./opmet";
+  const directoryPath = process.env.OPMET_PATH;
   let datas = [];
 
   try {
