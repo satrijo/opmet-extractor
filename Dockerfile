@@ -2,8 +2,6 @@
 FROM node:lts
 WORKDIR /app
 COPY . /app
-RUN npm install yarn -g
-RUN yarn install
-RUN yarn add nodemon -g
+RUN npm install
 # network
-CMD ["yarn", "start"]
+CMD ["npm", "start"]
