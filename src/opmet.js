@@ -47,6 +47,8 @@ const opmet = () => {
 
         datas.push(newData);
         fs.unlinkSync(filePath);
+      } else {
+        fs.unlinkSync(filePath);
       }
     });
   } catch (err) {

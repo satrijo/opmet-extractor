@@ -1,5 +1,6 @@
 import mysql from "mysql2";
 import env from "dotenv";
+import idop from "./idop.js";
 
 env.config();
 
@@ -51,6 +52,8 @@ const decodeOnebyOne = (group, typeBerita) => {
   const sliceGroup = [[group[0]], group.slice(1)];
   const header = sliceGroup[0][0].split(" ");
 
+  const headerSandi = sliceGroup[0][0];
+
   const identifier = header[0];
 
   const type = identifier.substring(0, 2);
@@ -93,10 +96,13 @@ const decodeOnebyOne = (group, typeBerita) => {
   let extra = header[3] ?? "";
 
   if (typeBerita == "METAR") {
-    sliceGroup[1].map((line) => {
+    sliceGroup[1].map(async (line) => {
       const lineSplit = line.split(" ");
-      console.log("METAR ISI :" + lineSplit);
+      // console.log("METAR ISI :" + lineSplit);
       if (lineSplit[0] == "METAR" || lineSplit[0] == "SPECI") {
+        if (line.includes("NIL")) {
+          return;
+        }
         let icao = "";
         if (lineSplit[1].length == 4) {
           icao = lineSplit[1];
@@ -105,7 +111,7 @@ const decodeOnebyOne = (group, typeBerita) => {
         }
 
         const wiorwa = lineSplit[1].substring(0, 2);
-        console.log("wiorwa :" + wiorwa);
+        // console.log("wiorwa :" + wiorwa);
 
         const dataText = line;
         let dataCode = datacode_date + dataText;
@@ -123,7 +129,11 @@ const decodeOnebyOne = (group, typeBerita) => {
         );
 
         if (wiorwa == "WI" || wiorwa == "WA") {
-          //   send data to api
+          try {
+            const idopSend = idop(headerSandi + "\n" + line);
+          } catch (error) {
+            console.log(error);
+          }
         }
       }
     });
@@ -131,13 +141,21 @@ const decodeOnebyOne = (group, typeBerita) => {
     sliceGroup[1].map((line) => {
       line = line.toString();
       const lineSplit = line.split(" ");
-      console.log("TAF ISI :" + lineSplit);
+      // console.log("TAF ISI :" + lineSplit);
 
       if (lineSplit.length < 2) return;
       if (lineSplit.length < 3) return;
       if (lineSplit.length < 4) return;
       if (lineSplit[0] == "TAF") {
-        console.log("TAF ISI :" + lineSplit);
+        if (line.includes("NIL")) {
+          console.log("NIL");
+          console.log(line);
+          return;
+        }
+
+        const wiorwa = lineSplit[1].substring(0, 2);
+        // console.log("wiorwa :" + wiorwa);
+        // console.log("TAF ISI :" + lineSplit);
         let icao = "";
         if (lineSplit[1].length == 4) {
           icao = lineSplit[1];
@@ -176,6 +194,71 @@ const decodeOnebyOne = (group, typeBerita) => {
             compiledValidFrom = `${year}-${month}-${dateValidFrom} ${hourValidFrom}:00`;
             let dateValidUntil = validity.substring(5, 7);
             let hourValidUntil = validity.substring(7, 9);
+
+            // check if hour 24 then change to 00
+            if (hourValidUntil == "24") {
+              hourValidUntil = "00";
+
+              // plus 1 day to dateValidUntil but check first this month is 30 or 31 or is february (28 or 29)
+
+              if (
+                month == 1 ||
+                month == 3 ||
+                month == 5 ||
+                month == 7 ||
+                month == 8 ||
+                month == 10
+              ) {
+                if (dateValidUntil == "31") {
+                  dateValidUntil = "01";
+                } else {
+                  dateValidUntil = parseInt(dateValidUntil);
+                  dateValidUntil = dateValidUntil + 1;
+                  dateValidUntil = dateValidUntil.toString();
+                  if (dateValidUntil < 10) {
+                    dateValidUntil = "0" + dateValidUntil;
+                  }
+                }
+              } else if (month == 12) {
+                if (dateValidUntil == "31") {
+                  dateValidUntil = "01";
+                } else {
+                  dateValidUntil = parseInt(dateValidUntil);
+                  dateValidUntil = dateValidUntil + 1;
+                  dateValidUntil = dateValidUntil.toString();
+                  if (dateValidUntil < 10) {
+                    dateValidUntil = "0" + dateValidUntil;
+                  }
+                }
+              } else if (month == 2) {
+                const isLeapYear =
+                  (year % 4 == 0 && year % 100 != 0) || year % 400 == 0;
+                if (isLeapYear) {
+                  if (dateValidUntil == "29") {
+                    dateValidUntil = "01";
+                  } else {
+                    dateValidUntil = parseInt(dateValidUntil);
+                    dateValidUntil = dateValidUntil + 1;
+                    dateValidUntil = dateValidUntil.toString();
+                    if (dateValidUntil < 10) {
+                      dateValidUntil = "0" + dateValidUntil;
+                    }
+                  }
+                } else {
+                  if (dateValidUntil == "28") {
+                    dateValidUntil = "01";
+                  } else {
+                    dateValidUntil = parseInt(dateValidUntil);
+                    dateValidUntil = dateValidUntil + 1;
+                    dateValidUntil = dateValidUntil.toString();
+                    if (dateValidUntil < 10) {
+                      dateValidUntil = "0" + dateValidUntil;
+                    }
+                  }
+                }
+              }
+            }
+
             if (dateValidFrom > dateValidUntil) {
               if (month == 12) {
                 month = "01";
@@ -195,8 +278,8 @@ const decodeOnebyOne = (group, typeBerita) => {
             compiledValidFrom = null;
             compiledValidUntil = null;
           }
-          console.log("valid_from :" + compiledValidFrom);
-          console.log("valid_until :" + compiledValidUntil);
+          // console.log("valid_from :" + compiledValidFrom);
+          // console.log("valid_until :" + compiledValidUntil);
           pool.query(
             `INSERT INTO taf (
           data_code,
@@ -232,6 +315,14 @@ const decodeOnebyOne = (group, typeBerita) => {
               }
             }
           );
+
+          if (wiorwa == "WI" || wiorwa == "WA") {
+            try {
+              const idopSend = idop(headerSandi + "\n" + line);
+            } catch (error) {
+              console.log(error);
+            }
+          }
         }
       }
     });
@@ -241,6 +332,13 @@ const decodeOnebyOne = (group, typeBerita) => {
       const lineSplit = line.split(" ");
       console.log("SIGMET ISI :" + lineSplit);
       if (lineSplit[1] == "SIGMET") {
+        if (line.includes("NIL")) {
+          return;
+        }
+
+        const wiorwa = lineSplit[1].substring(0, 2);
+        // console.log("wiorwa :" + wiorwa);
+
         let icao = center;
         let ats_code = lineSplit[0];
         let sequence_code = lineSplit[2];
@@ -303,7 +401,7 @@ const decodeOnebyOne = (group, typeBerita) => {
             6
           )}`;
 
-          console.log("valid_until :" + compiledValidUntil);
+          // console.log("valid_until :" + compiledValidUntil);
 
           pool.query(
             `INSERT INTO sigmet (
@@ -342,6 +440,14 @@ const decodeOnebyOne = (group, typeBerita) => {
               }
             }
           );
+
+          if (wiorwa == "WI" || wiorwa == "WA") {
+            try {
+              const idopSend = idop(headerSandi + "\n" + line);
+            } catch (error) {
+              console.log(error);
+            }
+          }
         }
       }
     });
