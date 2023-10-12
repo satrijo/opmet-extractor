@@ -28,8 +28,8 @@ if (nodeEnv !== "development") {
   app.get("/", async (req, res) => {
     try {
       const opmetData = await opmet();
-      const sendData = await send(opmetData);
-      res.send("Hello World!");
+      // const sendData = await send(opmetData);
+      res.json(opmetData);
     } catch (error) {
       console.error("Error handling request:", error);
       res.status(500).json({ error: "Internal Server Error" });

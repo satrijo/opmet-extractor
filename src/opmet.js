@@ -5,52 +5,58 @@ import env from "dotenv";
 env.config();
 
 const opmet = () => {
-  const directoryPath = process.env.OPMET_PATH;
+  const transmetPath = process.env.TRANSMET_PATH;
+  const cmssPath = process.env.CMSS_PATH;
   let datas = [];
-
   try {
-    const files = fs.readdirSync(directoryPath);
+    const checkFolder = (folder) => {
+      const files = fs.readdirSync(folder);
+      files.forEach((file) => {
+        const filePath = path.join(folder, file);
 
-    files.forEach((file) => {
-      const filePath = path.join(directoryPath, file);
+        if (file.includes(".a")) {
+          const data = fs.readFileSync(filePath, "utf8");
+          let dataLines = data.split("\n");
+          const dataCleansing = [];
+          let group = [];
 
-      if (file.includes(".a")) {
-        const data = fs.readFileSync(filePath, "utf8");
-        let dataLines = data.split("\n");
-        const dataCleansing = [];
-        let group = [];
-
-        dataLines.forEach((line) => {
-          if (line.startsWith("0000") || line.startsWith("\u0003")) {
-            if (group.length > 0) {
-              dataCleansing.push(group);
-              group = [];
+          dataLines.forEach((line) => {
+            if (line.startsWith("0000") || line.startsWith("\u0003")) {
+              if (group.length > 0) {
+                dataCleansing.push(group);
+                group = [];
+              }
             }
+            group.push(line);
+          });
+
+          if (group.length > 0) {
+            dataCleansing.push(group);
           }
-          group.push(line);
-        });
 
-        if (group.length > 0) {
-          dataCleansing.push(group);
+          const newData = dataCleansing
+            .map((group) => group.slice(2))
+            .map((group) =>
+              group.map((line) =>
+                line.replace(/\r/g, "").replace(/\u0003/g, "")
+              )
+            )
+            .map((group) => group.filter((line) => line.trim() !== ""))
+            .map((group) => combineLines(group))
+            .map((group) => cleanLines(group))
+            // if array length is 0, then delete
+            .filter((group) => group.length > 0);
+
+          datas.push(newData);
+          fs.unlinkSync(filePath);
+        } else {
+          fs.unlinkSync(filePath);
         }
+      });
+    };
 
-        const newData = dataCleansing
-          .map((group) => group.slice(2))
-          .map((group) =>
-            group.map((line) => line.replace(/\r/g, "").replace(/\u0003/g, ""))
-          )
-          .map((group) => group.filter((line) => line.trim() !== ""))
-          .map((group) => combineLines(group))
-          .map((group) => cleanLines(group))
-          // if array length is 0, then delete
-          .filter((group) => group.length > 0);
-
-        datas.push(newData);
-        fs.unlinkSync(filePath);
-      } else {
-        fs.unlinkSync(filePath);
-      }
-    });
+    const transmet = checkFolder(transmetPath);
+    const cmss = checkFolder(cmssPath);
   } catch (err) {
     console.error("Error reading directory:", err);
     throw err;
