@@ -13,6 +13,7 @@ const idop = (sandi) => {
     },
     formData: {
       sandi,
+      kirim_cmss: "false",
     },
   };
   request(options, function (error, response) {

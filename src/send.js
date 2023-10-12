@@ -56,6 +56,12 @@ const decodeOnebyOne = (group, typeBerita) => {
 
   const identifier = header[0];
 
+  const regionalCode = header[1];
+
+  if (regionalCode === "WIIX") {
+    return;
+  }
+
   const type = identifier.substring(0, 2);
   const regional = identifier.substring(2, 4);
   const bulletin = identifier.substring(4, 6);
