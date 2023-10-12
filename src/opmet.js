@@ -9,7 +9,7 @@ const opmet = () => {
   const cmssPath = process.env.CMSS_PATH;
   let datas = [];
   try {
-    const checkFolder = (folder) => {
+    const checkFolder = (folder, type) => {
       const files = fs.readdirSync(folder);
       files.forEach((file) => {
         const filePath = path.join(folder, file);
@@ -49,14 +49,16 @@ const opmet = () => {
 
           datas.push(newData);
           fs.unlinkSync(filePath);
-        } else {
+        }
+
+        if (type == "transmet") {
           fs.unlinkSync(filePath);
         }
       });
     };
 
-    const transmet = checkFolder(transmetPath);
-    const cmss = checkFolder(cmssPath);
+    const transmet = checkFolder(transmetPath, "transmet");
+    const cmss = checkFolder(cmssPath, "cmss");
   } catch (err) {
     console.error("Error reading directory:", err);
     throw err;
