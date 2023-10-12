@@ -49,10 +49,10 @@ const opmet = () => {
 
           datas.push(newData);
           fs.unlinkSync(filePath);
-        }
-
-        if (type == "transmet") {
-          fs.unlinkSync(filePath);
+        } else {
+          if (type == "transmet") {
+            fs.unlinkSync(filePath);
+          }
         }
       });
     };
