@@ -109,6 +109,7 @@ const decodeOnebyOne = (group, typeBerita) => {
         if (line.includes("NIL")) {
           return;
         }
+
         let icao = "";
         if (lineSplit[1].length == 4) {
           icao = lineSplit[1];
@@ -116,7 +117,11 @@ const decodeOnebyOne = (group, typeBerita) => {
           icao = lineSplit[2];
         }
 
-        const wiorwa = lineSplit[1].substring(0, 2);
+        if (regionalCode !== icao) {
+          return;
+        }
+
+        const wiorwa = icao.substring(0, 2);
         // console.log("wiorwa :" + wiorwa);
 
         const dataText = line;
@@ -159,15 +164,21 @@ const decodeOnebyOne = (group, typeBerita) => {
           return;
         }
 
-        const wiorwa = lineSplit[1].substring(0, 2);
-        // console.log("wiorwa :" + wiorwa);
-        // console.log("TAF ISI :" + lineSplit);
         let icao = "";
         if (lineSplit[1].length == 4) {
           icao = lineSplit[1];
         } else {
           icao = lineSplit[2];
         }
+
+        const wiorwa = icao.substring(0, 2);
+        // console.log("wiorwa :" + wiorwa);
+        // console.log("TAF ISI :" + lineSplit);
+
+        // if (regionalCode !== icao) {
+        //   return;
+        // }
+
         const dataText = line;
         let dataCode = datacode_date + dataText;
         dataCode = dataCode
