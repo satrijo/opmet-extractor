@@ -58,10 +58,6 @@ const decodeOnebyOne = (group, typeBerita) => {
 
   const regionalCode = header[1];
 
-  if (regionalCode === "WIIX") {
-    return;
-  }
-
   const type = identifier.substring(0, 2);
   const regional = identifier.substring(2, 4);
   const bulletin = identifier.substring(4, 6);
@@ -117,10 +113,6 @@ const decodeOnebyOne = (group, typeBerita) => {
           icao = lineSplit[2];
         }
 
-        if (regionalCode !== icao) {
-          return;
-        }
-
         const wiorwa = icao.substring(0, 2);
         // console.log("wiorwa :" + wiorwa);
 
@@ -141,6 +133,13 @@ const decodeOnebyOne = (group, typeBerita) => {
 
         if (wiorwa == "WI" || wiorwa == "WA") {
           try {
+            if (regionalCode === "WIIX") {
+              return;
+            }
+
+            if (regionalCode !== icao) {
+              return;
+            }
             const idopSend = idop(headerSandi + "\n" + line);
           } catch (error) {
             console.log(error);
@@ -335,6 +334,9 @@ const decodeOnebyOne = (group, typeBerita) => {
 
           if (wiorwa == "WI" || wiorwa == "WA") {
             try {
+              if (regionalCode === "WIIX") {
+                return;
+              }
               const idopSend = idop(headerSandi + "\n" + line);
             } catch (error) {
               console.log(error);
@@ -460,6 +462,9 @@ const decodeOnebyOne = (group, typeBerita) => {
 
           if (wiorwa == "WI" || wiorwa == "WA") {
             try {
+              if (regionalCode === "WIIX") {
+                return;
+              }
               const idopSend = idop(headerSandi + "\n" + line);
             } catch (error) {
               console.log(error);
