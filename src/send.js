@@ -121,7 +121,9 @@ const decodeOnebyOne = (group, typeBerita) => {
         dataCode = dataCode
           .replace(/-/g, "")
           .replace(/:/g, "")
-          .replace(/\s/g, "");
+          .replace(/\s/g, "")
+          // replace = with nothing
+          .replace(/=/g, "");
 
         dataCode = dataCode.substring(0, 254);
         pool.query(
@@ -183,7 +185,9 @@ const decodeOnebyOne = (group, typeBerita) => {
         dataCode = dataCode
           .replace(/-/g, "")
           .replace(/:/g, "")
-          .replace(/\s/g, "");
+          .replace(/\s/g, "")
+          // replace = with nothing
+          .replace(/=/g, "");
         dataCode = dataCode.substring(0, 254);
         let issuedTime = "";
         if (lineSplit[2].length == 7) {
@@ -373,7 +377,9 @@ const decodeOnebyOne = (group, typeBerita) => {
         dataCode = dataCode
           .replace(/-/g, "")
           .replace(/:/g, "")
-          .replace(/\s/g, "");
+          .replace(/\s/g, "")
+          // replace = with nothing
+          .replace(/=/g, "");
         dataCode = dataCode.substring(0, 254);
         let validTime = "";
 
