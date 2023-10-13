@@ -8,7 +8,7 @@ const opmet = () => {
   const transmetPath = process.env.TRANSMET_PATH;
   const cmssPath = process.env.CMSS_PATH;
   const trash = process.env.TRASH_PATH;
-  const wifs = process.env.WIFS_PATH;
+  const wifsPath = process.env.WIFS_PATH;
 
   let datas = [];
   try {
@@ -77,7 +77,7 @@ const opmet = () => {
 
     const transmet = checkFolder(transmetPath, "transmet");
     const cmss = checkFolder(cmssPath, "cmss");
-    const wifs = checkFolder(wifs, "wifs");
+    const wifs = checkFolder(wifsPath, "wifs");
   } catch (err) {
     console.error("Error reading directory:", err);
     throw err;
