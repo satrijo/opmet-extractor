@@ -7,6 +7,8 @@ env.config();
 const opmet = () => {
   const transmetPath = process.env.TRANSMET_PATH;
   const cmssPath = process.env.CMSS_PATH;
+  const trash = process.env.TRASH_PATH;
+
   let datas = [];
   try {
     const checkFolder = (folder, type) => {
@@ -48,7 +50,17 @@ const opmet = () => {
             .filter((group) => group.length > 0);
 
           datas.push(newData);
-          fs.unlinkSync(filePath);
+          if (type == "transmet") {
+            // fs.unlinkSync(filePath);
+            fs.renameSync(filePath, path.join(trash, file), (err) => {
+              if (err) throw err;
+              console.log("Successfully moved");
+            });
+          }
+
+          if (type == "cmss") {
+            fs.unlinkSync(filePath);
+          }
         } else {
           if (type == "transmet") {
             fs.unlinkSync(filePath);
