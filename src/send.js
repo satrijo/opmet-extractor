@@ -140,6 +140,12 @@ const decodeOnebyOne = (group, typeBerita) => {
               let headerSandiArray = headerSandi.split(" ");
               console.log(`Rubah icao ${headerSandiArray[1]} ke ${icao}`);
               headerSandiArray[1] = icao;
+
+              if (regionalCode == "WIIX" && headerSandiArray.length == 4) {
+                // delete index 3
+                headerSandiArray[3] = "";
+              }
+
               headerSandiString = headerSandiArray.join(" ");
             }
             const idopSend = idop(headerSandiString + "\n" + line);
