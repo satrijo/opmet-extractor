@@ -135,14 +135,13 @@ const decodeOnebyOne = (group, typeBerita) => {
 
         if (wiorwa == "WI" || wiorwa == "WA") {
           try {
-            if (regionalCode === "WIIX") {
-              return;
+            let headerSandiString = headerSandi;
+            if (regionalCode !== icao || regionalCode == "WIIX") {
+              let headerSandiArray = headerSandi.split(" ");
+              headerSandiArray[1] = icao;
+              headerSandiString = headerSandiArray.join(" ");
             }
-
-            if (regionalCode !== icao) {
-              return;
-            }
-            const idopSend = idop(headerSandi + "\n" + line);
+            const idopSend = idop(headerSandiString + "\n" + line);
           } catch (error) {
             console.log(error);
           }
