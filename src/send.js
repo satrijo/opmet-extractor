@@ -138,6 +138,7 @@ const decodeOnebyOne = (group, typeBerita) => {
             let headerSandiString = headerSandi;
             if (regionalCode !== icao || regionalCode == "WIIX") {
               let headerSandiArray = headerSandi.split(" ");
+              console.log(`Rubah icao ${headerSandiArray[1]} ke ${icao}`);
               headerSandiArray[1] = icao;
               headerSandiString = headerSandiArray.join(" ");
             }
