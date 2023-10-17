@@ -143,7 +143,9 @@ const decodeOnebyOne = (group, typeBerita) => {
 
               if (regionalCode == "WIIX" && headerSandiArray.length == 4) {
                 // delete index 3
+                console.log(`Hapus ${headerSandiArray[3]} = ${headerSandi}`);
                 headerSandiArray[3] = "";
+                console.log(`Menjadi ${headerSandiArray.join(" ")}`);
               }
 
               headerSandiString = headerSandiArray.join(" ");
