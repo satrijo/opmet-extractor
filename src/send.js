@@ -149,6 +149,8 @@ const decodeOnebyOne = (group, typeBerita) => {
               }
 
               headerSandiString = headerSandiArray.join(" ");
+              headerSandiString = headerSandiString.replace(/\s/g, "");
+              headerSandiString = headerSandiString.trim();
             }
             const idopSend = idop(headerSandiString + "\n" + line);
           } catch (error) {
