@@ -14,7 +14,11 @@ if (nodeEnv !== "development") {
     try {
       const opmetData = await opmet();
       const sendData = await send(opmetData);
-      const date = new Date();
+      let date = new Date();
+      date = date.toLocaleString("en-US", { timeZone: "Asia/Jakarta" });
+      console.log("running a task every 10 seconds " + date);
+      // to UTC +0
+      date = date.toLocaleString("en-US", { timeZone: "UTC" });
       console.log("running a task every 10 seconds " + date);
     } catch (error) {
       console.error("Error handling request:", error);

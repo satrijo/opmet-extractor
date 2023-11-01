@@ -66,7 +66,9 @@ const decodeOnebyOne = (group, typeBerita) => {
   const datetime = header[2];
   const date = datetime.substring(0, 2);
 
-  const dateNow = new Date();
+  let dateNow = new Date();
+  dateNow = new Date(dateNow.getTime() - 7 * 3600000);
+
   let month = dateNow.getMonth() + 1;
   if (month < 10) {
     month = "0" + month;
