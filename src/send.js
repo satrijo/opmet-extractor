@@ -153,7 +153,10 @@ const decodeOnebyOne = (group, typeBerita) => {
               headerSandiString = headerSandiArray.join(" ");
               headerSandiString = headerSandiString.trim();
             }
-            const idopSend = idop(headerSandiString + "\n" + line);
+            // cek kalo variable line mengandung = maka boleh send idop
+            if (line.includes("=")) {
+              const idopSend = idop(headerSandiString + "\n" + line);
+            }
           } catch (error) {
             console.log(error);
           }
