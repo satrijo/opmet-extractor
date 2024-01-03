@@ -351,6 +351,15 @@ const decodeOnebyOne = (group, typeBerita) => {
             }
           );
 
+          try {
+            if (regionalCode === "WIIX") {
+              return;
+            }
+            const idopSend = idop(headerSandi + "\n" + line);
+          } catch (error) {
+            console.log(error);
+          }
+
           // if (wiorwa == "WI" || wiorwa == "WA") {
           //   try {
           //     if (regionalCode === "WIIX") {
