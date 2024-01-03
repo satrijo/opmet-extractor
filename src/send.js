@@ -135,31 +135,32 @@ const decodeOnebyOne = (group, typeBerita) => {
           }
         );
 
-        if (wiorwa == "WI" || wiorwa == "WA") {
-          try {
-            let headerSandiString = headerSandi;
-            if (regionalCode !== icao || regionalCode == "WIIX") {
-              let headerSandiArray = headerSandi.split(" ");
-              console.log(`Rubah icao ${headerSandiArray[1]} ke ${icao}`);
-              headerSandiArray[1] = icao;
+        try {
+          let headerSandiString = headerSandi;
+          if (regionalCode !== icao || regionalCode == "WIIX") {
+            let headerSandiArray = headerSandi.split(" ");
+            console.log(`Rubah icao ${headerSandiArray[1]} ke ${icao}`);
+            headerSandiArray[1] = icao;
 
-              if (regionalCode == "WIIX" && headerSandiArray.length == 4) {
-                // delete index 3
-                console.log(`Hapus ${headerSandiArray[3]} = ${headerSandi}`);
-                headerSandiArray[3] = "";
-                console.log(`Menjadi ${headerSandiArray.join(" ")}`);
-              }
+            if (regionalCode == "WIIX" && headerSandiArray.length == 4) {
+              // delete index 3
+              console.log(`Hapus ${headerSandiArray[3]} = ${headerSandi}`);
+              headerSandiArray[3] = "";
+              console.log(`Menjadi ${headerSandiArray.join(" ")}`);
+            }
 
-              headerSandiString = headerSandiArray.join(" ");
-              headerSandiString = headerSandiString.trim();
-            }
-            // cek kalo variable line mengandung = maka boleh send idop
-            if (line.includes("=")) {
-              const idopSend = idop(headerSandiString + "\n" + line);
-            }
-          } catch (error) {
-            console.log(error);
+            headerSandiString = headerSandiArray.join(" ");
+            headerSandiString = headerSandiString.trim();
           }
+          // cek kalo variable line mengandung = maka boleh send idop
+          if (line.includes("=")) {
+            const idopSend = idop(headerSandiString + "\n" + line);
+          }
+        } catch (error) {
+          console.log(error);
+        }
+
+        if (wiorwa == "WI" || wiorwa == "WA") {
         }
       }
     });
