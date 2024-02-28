@@ -171,6 +171,9 @@ const decodeOnebyOne = (group, typeBerita) => {
           // cek kalo variable line mengandung = maka boleh send idop
           if (line.includes("=")) {
             const idopSend = idop(headerSandiString + "\n" + line);
+            if (icao == "WAHL") {
+              sendWhatsapp(`${headerSandiString}\n${line}`, "6282111119138");
+            }
           }
         } catch (error) {
           console.log(error);
