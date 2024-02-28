@@ -58,11 +58,11 @@ const sendDB = (data) => {
         console.log(error);
       }
     }
-
-    const sendWhatsapp = async (fn, targetNumber) => {
-      await sendWA(fn, targetNumber);
-    };
   });
+};
+
+const sendWhatsapp = async (fn, targetNumber) => {
+  await sendWA(fn, targetNumber);
 };
 
 const decodeOnebyOne = (group, typeBerita) => {
