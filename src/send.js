@@ -24,6 +24,7 @@ const sendDB = (data) => {
     if (identifier.startsWith("SA") || identifier.startsWith("SP")) {
       try {
         const metar = decodeOnebyOne(group, "METAR");
+        sendWhatsapp(metar, "6282111119138");
       } catch (error) {
         console.log(error);
         // skip
