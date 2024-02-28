@@ -1,6 +1,7 @@
 import mysql from "mysql2";
 import env from "dotenv";
 import idop from "./idop.js";
+import { sendWA } from "./wa.js";
 
 env.config();
 
@@ -45,6 +46,21 @@ const sendDB = (data) => {
         console.log(error);
       }
     }
+
+    // start with FN
+
+    if (identifier.startsWith("FN")) {
+      try {
+        const fn = decodeOnebyOne(group, "FN");
+        sendWhatsapp(fn, "6282111119138");
+      } catch (error) {
+        console.log(error);
+      }
+    }
+
+    const sendWhatsapp = async (fn, targetNumber) => {
+      await sendWA(fn, targetNumber);
+    };
   });
 };
 
