@@ -2,6 +2,7 @@ import mysql from "mysql2";
 import env from "dotenv";
 import idop from "./idop.js";
 import { sendWA } from "./wa.js";
+import moment from "moment";
 
 env.config();
 
@@ -52,7 +53,6 @@ const sendDB = (data) => {
     if (identifier.startsWith("FN")) {
       try {
         const fn = decodeOnebyOne(group, "FN");
-        sendWhatsapp(identifier, "6282111119138");
       } catch (error) {
         console.log(error);
       }
@@ -522,6 +522,32 @@ const decodeOnebyOne = (group, typeBerita) => {
         }
       }
     });
+  } else if (typeBerita == "FN") {
+
+    let id_code = `${headerSandi}-${sliceGroup[1]}`;
+    // DATETIME - format: YYYY-MM-DD HH:MI:SS form date now
+    let insert = moment().format("YYYY-MM-DD HH:mm:ss");
+    id_code = id_code.substring(0, 254).replace(" ", "_");
+
+    console.log("id_code : " + id_code);
+    console.log("insert : " + insert);
+
+    pool.query(
+      `INSERT INTO space_weather (
+          id_code,
+          header,
+          code,
+          time) VALUES
+          ('${id_code}','${headerSandi}',
+          '${sliceGroup[1]}',
+          '${insert}')`,
+      (err, result) => {
+        console.log(result);
+        if (err) {
+          console.log(err);
+        }
+      }
+    );
   }
 };
 
