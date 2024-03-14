@@ -115,7 +115,7 @@ const cleanLines = (lines) => {
   }
   const header = lines[0].split(" ");
   const identifier = header[0];
-  if (identifier.startsWith("W")) {
+  if (identifier.startsWith("W") || identifier.startsWith("FNXX")) {
     return lines;
   }
   return lines.map((line) => line.replace(/\s+/g, " ").trim());
@@ -139,7 +139,7 @@ const combineLines = (lines) => {
     } else if (line.startsWith("// END PART")) {
       // do nothing
     } else {
-      if (identifier.startsWith("W")) {
+      if (identifier.startsWith("W") || identifier.startsWith("FNXX")) {
         combinedLine += line + "\r";
       } else {
         combinedLine += line + " ";
