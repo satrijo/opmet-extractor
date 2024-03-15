@@ -31,7 +31,7 @@ const sendDB = (data) => {
       }
     }
 
-    if (identifier.startsWith("SN") || identifier.startsWith("SM") || identifier.startsWith("SI")) {
+    if (identifier.startsWith("SNID") || identifier.startsWith("SMID") || identifier.startsWith("SIID")) {
       try {
         const taf = decodeOnebyOne(group, "SYNOP");
       } catch (error) {
@@ -563,7 +563,7 @@ const decodeOnebyOne = (group, typeBerita) => {
       sendWhatsapp(`Data Sandi WIIL ${group}`, "6282111119138");
     }
 
-    sendWhatsapp(`${group}`, "6282111119138");
+    sendWhatsapp(`${group} with header ${headerSandi} and icao ${regionalCode}`, "6282111119138");
   }
 };
 
