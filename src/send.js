@@ -557,7 +557,7 @@ const decodeOnebyOne = (group, typeBerita) => {
         }
       }
     );
-  } else if (typeBerita == "FNXX") {
+  } else if (typeBerita == "SYNOP") {
 
     if (regionalCode == "WIIL") {
       sendWhatsapp(`Data Sandi WIIL ${group}`, "6282111119138");
