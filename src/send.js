@@ -31,6 +31,15 @@ const sendDB = (data) => {
       }
     }
 
+    if (identifier.startsWith("SN") || identifier.startsWith("SM") || identifier.startsWith("SI")) {
+      try {
+        const taf = decodeOnebyOne(group, "SYNOP");
+      } catch (error) {
+        console.log(error);
+        // skip
+      }
+    }
+
     if (identifier.startsWith("FT") || identifier.startsWith("FC")) {
       try {
         const taf = decodeOnebyOne(group, "TAF");
@@ -548,6 +557,13 @@ const decodeOnebyOne = (group, typeBerita) => {
         }
       }
     );
+  } else if (typeBerita == "FNXX") {
+
+    if (regionalCode == "WIIL") {
+      sendWhatsapp(`Data Sandi WIIL ${group}`, "6282111119138");
+    }
+
+    sendWhatsapp(`${group}`, "6282111119138");
   }
 };
 
