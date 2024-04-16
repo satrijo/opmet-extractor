@@ -383,7 +383,9 @@ const decodeOnebyOne = (group, typeBerita) => {
             if (regionalCode === "WIIX") {
               return;
             }
-            const idopSend = idop(headerSandi + "\n" + line);
+            if (wiorwa == "WI" || wiorwa == "WA") {
+              const idopSend = idop(headerSandi + "\n" + line);
+            }
           } catch (error) {
             console.log(error);
           }
