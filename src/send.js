@@ -180,9 +180,9 @@ const decodeOnebyOne = (group, typeBerita) => {
           // cek kalo variable line mengandung = maka boleh send idop
           if (line.includes("=")) {
             const idopSend = idop(headerSandiString + "\n" + line);
-            if (icao == "WAHL") {
-              sendWhatsapp(`${headerSandiString}\n${line}`, "6282111119138");
-            }
+            // if (icao == "WAHL") {
+            //   sendWhatsapp(`${headerSandiString}\n${line}`, "6282111119138");
+            // }
           }
         } catch (error) {
           console.log(error);
@@ -404,86 +404,86 @@ const decodeOnebyOne = (group, typeBerita) => {
       }
     });
   } else if (typeBerita == "SIGMET") {
-    sliceGroup[1].map((line) => {
-      line = line.toString();
-      const lineSplit = line.split(" ");
-      console.log("SIGMET ISI :" + lineSplit);
-      if (lineSplit[1] == "SIGMET") {
-        if (line.includes("NIL")) {
-          return;
-        }
 
-        const wiorwa = lineSplit[1].substring(0, 2);
-        // console.log("wiorwa :" + wiorwa);
+    const lineHeader = group[0];
+    const line = [...group].slice(1).join(" ");
+    const lineSplit = line.split(" ");
+    if (lineSplit[1] == "SIGMET") {
+      if (line.includes("NIL")) {
+        return;
+      }
 
-        let icao = center;
-        let ats_code = lineSplit[0];
-        let sequence_code = lineSplit[2];
+      const wiorwa = lineSplit[1].substring(0, 2);
+      // console.log("wiorwa :" + wiorwa);
 
-        const numbersInWord = sequence_code.match(/\d+/);
+      let icao = center;
+      let ats_code = lineSplit[0];
+      let sequence_code = lineSplit[2];
 
-        if (numbersInWord) {
-          sequence_code = numbersInWord[0];
-        }
+      const numbersInWord = sequence_code.match(/\d+/);
 
-        const dataText = line;
-        let dataCode = datacode_date + dataText;
-        dataCode = dataCode
-          .replace(/-/g, "")
-          .replace(/:/g, "")
-          .replace(/\s/g, "")
-          // replace = with nothing
-          .replace(/=/g, "");
-        dataCode = dataCode.substring(0, 254);
-        let validTime = "";
+      if (numbersInWord) {
+        sequence_code = numbersInWord[0];
+      }
 
-        if (lineSplit[4].length == 13) {
-          validTime = lineSplit[4];
-        } else {
-          validTime = lineSplit[5];
-        }
+      const dataText = line;
+      let dataCode = datacode_date + dataText;
+      dataCode = dataCode
+        .replace(/-/g, "")
+        .replace(/:/g, "")
+        .replace(/\s/g, "")
+        // replace = with nothing
+        .replace(/=/g, "");
+      dataCode = dataCode.substring(0, 254);
+      let validTime = "";
 
-        if (validTime && validTime.length == 13) {
-          let splitValidTime = validTime.split("/");
+      if (lineSplit[4].length == 13) {
+        validTime = lineSplit[4];
+      } else {
+        validTime = lineSplit[5];
+      }
 
-          const compiledValidFrom = `${year}-${month}-${splitValidTime[0].substring(
-            0,
-            2
-          )} ${splitValidTime[0].substring(2, 4)}:${splitValidTime[0].substring(
-            4,
-            6
-          )}`;
+      if (validTime && validTime.length == 13) {
+        let splitValidTime = validTime.split("/");
 
-          // check if date until less than from
-          let date_from = splitValidTime[0].substring(0, 2);
-          let date_until = splitValidTime[1].substring(0, 2);
+        const compiledValidFrom = `${year}-${month}-${splitValidTime[0].substring(
+          0,
+          2
+        )} ${splitValidTime[0].substring(2, 4)}:${splitValidTime[0].substring(
+          4,
+          6
+        )}`;
 
-          if (parseInt(date_from) > parseInt(date_until)) {
-            if (parseInt(month) < 12) {
-              month = parseInt(month) + 1;
-              if (month < 10) {
-                month = "0" + month.toString();
-              }
-            } else {
-              month = "01";
-              year = parseInt(year);
-              year = year + 1;
-              year = year.toString();
+        // check if date until less than from
+        let date_from = splitValidTime[0].substring(0, 2);
+        let date_until = splitValidTime[1].substring(0, 2);
+
+        if (parseInt(date_from) > parseInt(date_until)) {
+          if (parseInt(month) < 12) {
+            month = parseInt(month) + 1;
+            if (month < 10) {
+              month = "0" + month.toString();
             }
+          } else {
+            month = "01";
+            year = parseInt(year);
+            year = year + 1;
+            year = year.toString();
           }
+        }
 
-          const compiledValidUntil = `${year}-${month}-${splitValidTime[1].substring(
-            0,
-            2
-          )} ${splitValidTime[1].substring(2, 4)}:${splitValidTime[1].substring(
-            4,
-            6
-          )}`;
+        const compiledValidUntil = `${year}-${month}-${splitValidTime[1].substring(
+          0,
+          2
+        )} ${splitValidTime[1].substring(2, 4)}:${splitValidTime[1].substring(
+          4,
+          6
+        )}`;
 
-          // console.log("valid_until :" + compiledValidUntil);
+        // console.log("valid_until :" + compiledValidUntil);
 
-          pool.query(
-            `INSERT INTO sigmet (
+        pool.query(
+          `INSERT INTO sigmet (
           data_code,
           type_code,
           regional_code,
@@ -512,27 +512,27 @@ const decodeOnebyOne = (group, typeBerita) => {
           '${icao}',
           '${dataText}',
           '${insert}')`,
-            (err, result) => {
-              console.log(result);
-              if (err) {
-                console.log(err);
-              }
+          (err, result) => {
+            console.log(result);
+            if (err) {
+              console.log(err);
             }
-          );
+          }
+        );
 
-          // if (wiorwa == "WI" || wiorwa == "WA") {
-          //   try {
-          //     if (regionalCode === "WIIX") {
-          //       return;
-          //     }
-          //     const idopSend = idop(headerSandi + "\n" + line);
-          //   } catch (error) {
-          //     console.log(error);
-          //   }
-          // }
-        }
+        // if (wiorwa == "WI" || wiorwa == "WA") {
+        //   try {
+        //     if (regionalCode === "WIIX") {
+        //       return;
+        //     }
+        //     const idopSend = idop(headerSandi + "\n" + line);
+        //   } catch (error) {
+        //     console.log(error);
+        //   }
+        // }
       }
-    });
+    }
+
   } else if (typeBerita == "FN") {
 
     let id_code = `${headerSandi}-${sliceGroup[1]}`;
@@ -562,10 +562,10 @@ const decodeOnebyOne = (group, typeBerita) => {
   } else if (typeBerita == "SYNOP") {
 
     if (regionalCode == "WIIL") {
-      sendWhatsapp(`Data Sandi WIIL ${group}`, "6282111119138");
+      // sendWhatsapp(`Data Sandi WIIL ${group}`, "6282111119138");
     }
 
-    sendWhatsapp(`${group} with header ${headerSandi} and icao ${regionalCode}`, "6282111119138");
+    // sendWhatsapp(`${group} with header ${headerSandi} and icao ${regionalCode}`, "6282111119138");
   }
 };
 
