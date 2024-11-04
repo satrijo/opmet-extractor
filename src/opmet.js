@@ -17,7 +17,7 @@ const opmet = () => {
       files.forEach((file) => {
         const filePath = path.join(folder, file);
 
-        if (file.includes("OPMET") || file.includes(".a")) {
+        if (file.includes("OPMET") || file.includes(".a") || file.includes(".b")) {
           const data = fs.readFileSync(filePath, "utf8");
           let dataLines = data.split("\n");
           const dataCleansing = [];
