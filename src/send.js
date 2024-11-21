@@ -153,6 +153,8 @@ const decodeOnebyOne = (group, typeBerita) => {
           .replace(/=/g, "");
 
         dataCode = dataCode.substring(0, 254);
+        dataCode = dataCode.split("Z");
+        dataCode = dataCode[0] + "Z" + extra;
         pool.query(
           `INSERT INTO metar_speci (data_code, type_code, regional_code, bulletin_code, centre_code,filling_time,extra_code,icao_code,observed_time,data_text,insert_time) VALUES ('${dataCode}', '${type}', '${regional}', '${bulletin}', '${center}', '${filling}', '${extra}', '${icao}', '${filling}', '${dataText}', '${insert}')`,
           (err, result) => {
@@ -232,6 +234,8 @@ const decodeOnebyOne = (group, typeBerita) => {
           // replace = with nothing
           .replace(/=/g, "");
         dataCode = dataCode.substring(0, 254);
+        dataCode = dataCode.split("Z");
+        dataCode = dataCode[0] + "Z" + extra;
         let issuedTime = "";
         if (lineSplit[2].length == 7) {
           issuedTime = lineSplit[2];
@@ -435,6 +439,8 @@ const decodeOnebyOne = (group, typeBerita) => {
         // replace = with nothing
         .replace(/=/g, "");
       dataCode = dataCode.substring(0, 254);
+      dataCode = dataCode.split("Z");
+      dataCode = dataCode[0] + "Z" + extra;
       let validTime = "";
 
       if (lineSplit[4].length == 13) {
