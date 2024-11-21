@@ -4,183 +4,154 @@ import env from "dotenv";
 
 env.config();
 
-// Cache regex patterns
-const regexCache = {
-  carriage: /\r/g,
-  controlChar: /\u0003/g,
-  whitespace: /\s+/g,
-  metarPattern: / METAR/,
-  tafPattern: / TAF/,
-  sigmetPattern: / SIGMET/
-};
-
-// Predefined constants
-const VALID_FILE_PATTERNS = ['OPMET', '.a', '.b'];
-const HEADER_MARKERS = ['0000', '\u0003'];
-
 const opmet = () => {
-  const paths = {
-    transmet: process.env.TRANSMET_PATH,
-    cmss: process.env.CMSS_PATH,
-    wifs: process.env.WIFS_PATH
-  };
+  const transmetPath = process.env.TRANSMET_PATH;
+  const cmssPath = process.env.CMSS_PATH;
+  const trash = process.env.TRASH_PATH;
+  const wifsPath = process.env.WIFS_PATH;
 
-  const datas = [];
-
+  let datas = [];
   try {
-    // Process all folders concurrently
-    const processFolders = Object.entries(paths).map(([type, folderPath]) => 
-      processFolder(folderPath, type, datas)
-    );
-    
-    Promise.all(processFolders);
+    const checkFolder = (folder, type) => {
+      const files = fs.readdirSync(folder);
+      files.forEach((file) => {
+        const filePath = path.join(folder, file);
+
+        if (file.includes("OPMET") || file.includes(".a") || file.includes(".b")) {
+          const data = fs.readFileSync(filePath, "utf8");
+          let dataLines = data.split("\n");
+          const dataCleansing = [];
+          let group = [];
+
+          dataLines.forEach((line) => {
+            if (line.startsWith("0000") || line.startsWith("\u0003")) {
+              if (group.length > 0) {
+                dataCleansing.push(group);
+                group = [];
+              }
+            }
+            group.push(line);
+          });
+
+          if (group.length > 0) {
+            dataCleansing.push(group);
+          }
+
+          const newData = dataCleansing
+            .map((group) => group.slice(2))
+            .map((group) =>
+              group.map((line) =>
+                line.replace(/\r/g, "").replace(/\u0003/g, "")
+              )
+            )
+            .map((group) => group.filter((line) => line.trim() !== ""))
+            .map((group) => combineLines(group))
+            .map((group) => cleanLines(group))
+            .map((group) => checkIfDouble(group))
+            // if array length is 0, then delete
+            .filter((group) => group.length > 0);
+
+          datas.push(newData);
+          if (type == "transmet") {
+            fs.unlinkSync(filePath);
+            // fs.renameSync(filePath, path.join(trash, file), (err) => {
+            //   if (err) throw err;
+            //   console.log("Successfully moved");
+            // });
+          }
+
+          if (type == "cmss") {
+            fs.unlinkSync(filePath);
+          }
+
+          if (type == "wifs") {
+            fs.unlinkSync(filePath);
+          }
+        } else {
+          if (type == "transmet") {
+            fs.unlinkSync(filePath);
+          }
+        }
+      });
+    };
+
+    const transmet = checkFolder(transmetPath, "transmet");
+    const cmss = checkFolder(cmssPath, "cmss");
+    const wifs = checkFolder(wifsPath, "wifs");
   } catch (err) {
-    console.error("Error in OPMET processing:", err);
+    console.error("Error reading directory:", err);
     throw err;
   }
-
   return datas;
-};
-
-const processFolder = (folderPath, type, datas) => {
-  try {
-    const files = fs.readdirSync(folderPath);
-    
-    // Process only relevant files
-    const relevantFiles = files.filter(file => 
-      VALID_FILE_PATTERNS.some(pattern => file.includes(pattern))
-    );
-
-    relevantFiles.forEach(file => {
-      const filePath = path.join(folderPath, file);
-      processFile(filePath, type, datas);
-    });
-
-    // Clean up non-OPMET files in transmet folder
-    if (type === 'transmet') {
-      const otherFiles = files.filter(file => 
-        !VALID_FILE_PATTERNS.some(pattern => file.includes(pattern))
-      );
-      otherFiles.forEach(file => fs.unlinkSync(path.join(folderPath, file)));
-    }
-  } catch (err) {
-    console.error(`Error processing folder ${folderPath}:`, err);
-  }
-};
-
-const processFile = (filePath, type, datas) => {
-  const data = fs.readFileSync(filePath, "utf8");
-  const processedData = processDataContent(data);
-  
-  if (processedData.length > 0) {
-    datas.push(processedData);
-  }
-
-  // Clean up file based on type
-  fs.unlinkSync(filePath);
-};
-
-const processDataContent = (data) => {
-  const groups = splitIntoGroups(data);
-  
-  return groups
-    .map(group => group.slice(2))
-    .map(group => cleanGroupLines(group))
-    .map(group => combineLines(group))
-    .map(group => cleanLines(group))
-    .map(group => checkIfDouble(group))
-    .filter(group => group.length > 0);
-};
-
-const splitIntoGroups = (data) => {
-  const lines = data.split('\n');
-  const groups = [];
-  let currentGroup = [];
-
-  lines.forEach(line => {
-    if (HEADER_MARKERS.some(marker => line.startsWith(marker))) {
-      if (currentGroup.length > 0) {
-        groups.push(currentGroup);
-        currentGroup = [];
-      }
-    }
-    currentGroup.push(line);
-  });
-
-  if (currentGroup.length > 0) {
-    groups.push(currentGroup);
-  }
-
-  return groups;
-};
-
-const cleanGroupLines = (lines) => {
-  return lines
-    .map(line => line
-      .replace(regexCache.carriage, '')
-      .replace(regexCache.controlChar, '')
-    )
-    .filter(line => line.trim() !== '');
 };
 
 const checkIfDouble = (lines) => {
   const separatedData = [];
-  
-  lines.forEach(line => {
-    let processed = false;
-    ['METAR', 'TAF', 'SIGMET'].forEach(type => {
-      const pattern = regexCache[`${type.toLowerCase()}Pattern`];
-      if (pattern.test(line)) {
-        const [before, after] = line.split(pattern);
-        separatedData.push(before, type + after);
-        processed = true;
-      }
-    });
-    
-    if (!processed) {
-      separatedData.push(line);
+  const data = lines;
+  for (let i = 0; i < data.length; i++) {
+    if (data[i].includes(" METAR")) {
+      const index = data[i].indexOf(" METAR");
+      separatedData.push(data[i].substring(0, index));
+      separatedData.push(data[i].substring(index + 1));
+    } else if (data[i].includes(" TAF")) {
+      const index = data[i].indexOf(" TAF");
+      separatedData.push(data[i].substring(0, index));
+      separatedData.push(data[i].substring(index + 1));
+    } else if (data[i].includes(" SIGMET")) {
+      const index = data[i].indexOf(" SIGMET");
+      separatedData.push(data[i].substring(0, index));
+      separatedData.push(data[i].substring(index + 1));
+    } else {
+      separatedData.push(data[i]);
     }
-  });
-
+  }
   return separatedData;
 };
 
 const cleanLines = (lines) => {
-  if (lines.length < 1) return lines;
-  
-  const identifier = lines[0].split(' ')[0];
-  if (identifier.startsWith('W') || identifier.startsWith('FNXX')) {
+  const length = lines.length;
+  if (length < 1) {
     return lines;
   }
-  
-  return lines.map(line => line.replace(regexCache.whitespace, ' ').trim());
+  const header = lines[0].split(" ");
+  const identifier = header[0];
+  if (identifier.startsWith("W") || identifier.startsWith("FNXX")) {
+    return lines;
+  }
+  return lines.map((line) => line.replace(/\s+/g, " ").trim());
 };
 
 const combineLines = (lines) => {
-  if (lines.length < 1) return lines;
-  
-  const identifier = lines[0].split(' ')[0];
-  const isSpecialFormat = identifier.startsWith('W') || identifier.startsWith('FNXX');
-  const lineJoiner = isSpecialFormat ? '\r' : ' ';
-  
-  const combinedData = [lines[0]];
-  let currentLine = '';
+  const length = lines.length;
+  if (length < 1) {
+    return lines;
+  }
+  const header = lines[0].split(" ");
+  const identifier = header[0];
+  const combinedData = [];
+  let combinedLine = "";
 
-  lines.slice(1).forEach(line => {
-    if (line.includes('=')) {
-      currentLine += line;
-      combinedData.push(currentLine);
-      currentLine = '';
-    } else if (!line.startsWith('// END PART')) {
-      currentLine += line + lineJoiner;
+  lines.slice(1).forEach((line) => {
+    if (line.includes("=")) {
+      combinedLine += line;
+      combinedData.push(combinedLine);
+      combinedLine = "";
+    } else if (line.startsWith("// END PART")) {
+      // do nothing
+    } else {
+      if (identifier.startsWith("W") || identifier.startsWith("FNXX")) {
+        combinedLine += line + "\r";
+      } else {
+        combinedLine += line + " ";
+      }
     }
   });
 
-  if (currentLine.trim()) {
-    combinedData.push(currentLine.trim());
+  if (combinedLine.trim() !== "") {
+    combinedData.push(combinedLine.trim());
   }
 
-  return combinedData;
+  return [lines[0], ...combinedData];
 };
 
 export default opmet;
