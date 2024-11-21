@@ -154,7 +154,11 @@ const decodeOnebyOne = (group, typeBerita) => {
 
         dataCode = dataCode.substring(0, 254);
         dataCode = dataCode.split("Z");
-        dataCode = dataCode[0] + "Z" + extra;
+        if (regionalCode == "WIIX") {
+          dataCode = dataCode[0] + "Z";
+        } else {
+          dataCode = dataCode[0] + "Z" + extra;
+        }
         pool.query(
           `INSERT INTO metar_speci (data_code, type_code, regional_code, bulletin_code, centre_code,filling_time,extra_code,icao_code,observed_time,data_text,insert_time) VALUES ('${dataCode}', '${type}', '${regional}', '${bulletin}', '${center}', '${filling}', '${extra}', '${icao}', '${filling}', '${dataText}', '${insert}')`,
           (err, result) => {
