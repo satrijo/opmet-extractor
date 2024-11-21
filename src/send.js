@@ -439,9 +439,8 @@ const decodeOnebyOne = (group, typeBerita) => {
         // replace = with nothing
         .replace(/=/g, "");
       dataCode = dataCode.substring(0, 254);
-      dataCode = dataCode.substring(0, 254);
-        dataCode = dataCode.split("Z");
-        dataCode = dataCode[0] + "Z" + extra;
+      dataCode = dataCode.split("Z");
+      dataCode = dataCode[0] + "Z" + extra;
       let validTime = "";
 
       if (lineSplit[4].length == 13) {
