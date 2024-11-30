@@ -17,7 +17,11 @@ const opmet = () => {
       files.forEach((file) => {
         const filePath = path.join(folder, file);
 
-        if (file.includes("OPMET") || file.includes(".a") || file.includes(".b")) {
+        if (
+          file.includes("OPMET") ||
+          file.includes(".a") ||
+          file.includes(".b")
+        ) {
           const data = fs.readFileSync(filePath, "utf8");
           let dataLines = data.split("\n");
           const dataCleansing = [];
@@ -53,23 +57,35 @@ const opmet = () => {
 
           datas.push(newData);
           if (type == "transmet") {
-            fs.unlinkSync(filePath);
-            // fs.renameSync(filePath, path.join(trash, file), (err) => {
-            //   if (err) throw err;
-            //   console.log("Successfully moved");
-            // });
+            // fs.unlinkSync(filePath);
+            fs.renameSync(filePath, path.join(trash, file), (err) => {
+              if (err) throw err;
+              console.log("Successfully moved");
+            });
           }
 
           if (type == "cmss") {
-            fs.unlinkSync(filePath);
+            // fs.unlinkSync(filePath);
+            fs.renameSync(filePath, path.join(trash, file), (err) => {
+              if (err) throw err;
+              console.log("Successfully moved");
+            });
           }
 
           if (type == "wifs") {
-            fs.unlinkSync(filePath);
+            // fs.unlinkSync(filePath);
+            fs.renameSync(filePath, path.join(trash, file), (err) => {
+              if (err) throw err;
+              console.log("Successfully moved");
+            });
           }
         } else {
           if (type == "transmet") {
-            fs.unlinkSync(filePath);
+            // fs.unlinkSync(filePath);
+            fs.renameSync(filePath, path.join(trash, file), (err) => {
+              if (err) throw err;
+              console.log("Successfully moved");
+            });
           }
         }
       });
