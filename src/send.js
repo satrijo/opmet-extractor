@@ -31,7 +31,11 @@ const sendDB = (data) => {
       }
     }
 
-    if (identifier.startsWith("SNID") || identifier.startsWith("SMID") || identifier.startsWith("SIID")) {
+    if (
+      identifier.startsWith("SNID") ||
+      identifier.startsWith("SMID") ||
+      identifier.startsWith("SIID")
+    ) {
       try {
         const taf = decodeOnebyOne(group, "SYNOP");
       } catch (error) {
@@ -124,6 +128,10 @@ const decodeOnebyOne = (group, typeBerita) => {
   const insert = `${year}-${month}-${dateCurrent} ${hour}:${minute}`;
   let extra = header[3] ?? "";
 
+  if (extra.startsWith("R")) {
+    extra = "";
+  }
+
   if (typeBerita == "METAR") {
     sliceGroup[1].map(async (line) => {
       const lineSplit = line.split(" ");
@@ -154,7 +162,7 @@ const decodeOnebyOne = (group, typeBerita) => {
 
         dataCode = dataCode.substring(0, 254);
         dataCode = dataCode.split("Z");
-        if (regionalCode == "WIIX") {
+        if (regionalCode == "WIIX" && extra !== "CCA") {
           dataCode = dataCode[0] + "Z";
         } else {
           dataCode = dataCode[0] + "Z" + extra;
@@ -412,7 +420,6 @@ const decodeOnebyOne = (group, typeBerita) => {
       }
     });
   } else if (typeBerita == "SIGMET") {
-
     const lineHeader = group[0];
     const line = [...group].slice(1).join(" ");
     const lineSplit = line.split(" ");
@@ -542,9 +549,7 @@ const decodeOnebyOne = (group, typeBerita) => {
         // }
       }
     }
-
   } else if (typeBerita == "FN") {
-
     let id_code = `${headerSandi}-${sliceGroup[1]}`;
     // DATETIME - format: YYYY-MM-DD HH:MI:SS form date now
     let insert = moment().format("YYYY-MM-DD HH:mm:ss");
@@ -570,7 +575,6 @@ const decodeOnebyOne = (group, typeBerita) => {
       }
     );
   } else if (typeBerita == "SYNOP") {
-
     if (regionalCode == "WIIL") {
       // sendWhatsapp(`Data Sandi WIIL ${group}`, "6282111119138");
     }
