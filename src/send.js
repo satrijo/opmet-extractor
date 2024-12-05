@@ -162,7 +162,7 @@ const decodeOnebyOne = (group, typeBerita) => {
 
         dataCode = dataCode.substring(0, 254);
         dataCode = dataCode.split("Z");
-        if (regionalCode == "WIIX" && extra !== "CCA") {
+        if (regionalCode == "WIIX" && extra.startsWith("R")) {
           dataCode = dataCode[0] + "Z";
         } else {
           dataCode = dataCode[0] + "Z" + extra;
