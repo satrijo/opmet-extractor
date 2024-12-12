@@ -128,10 +128,6 @@ const decodeOnebyOne = (group, typeBerita) => {
   const insert = `${year}-${month}-${dateCurrent} ${hour}:${minute}`;
   let extra = header[3] ?? "";
 
-  if (extra.startsWith("R")) {
-    extra = "";
-  }
-
   if (typeBerita == "METAR") {
     sliceGroup[1].map(async (line) => {
       const lineSplit = line.split(" ");
@@ -163,7 +159,13 @@ const decodeOnebyOne = (group, typeBerita) => {
         dataCode = dataCode.substring(0, 254);
         dataCode = dataCode.split("Z");
         if (regionalCode == "WIIX" && extra.startsWith("R")) {
-          dataCode = dataCode[0] + "Z";
+          return;
+        } else if (extra.startsWith("R")) {
+          return;
+        } else if (!dataText.includes("=")) {
+          return;
+        } else if (regionalCode.startsWith("KW")) {
+          return;
         } else {
           dataCode = dataCode[0] + "Z" + extra;
         }
