@@ -249,7 +249,17 @@ const decodeOnebyOne = (group, typeBerita) => {
           .replace(/=/g, "");
         dataCode = dataCode.substring(0, 254);
         dataCode = dataCode.split("Z");
-        dataCode = dataCode[0] + "Z" + extra;
+        if (regionalCode == "WIIX") {
+          return;
+        } else if (extra.startsWith("A") || extra.startsWith("R")) {
+          return;
+        } else if (!dataText.includes("=")) {
+          return;
+        } else if (regionalCode.startsWith("K")) {
+          return;
+        } else {
+          dataCode = dataCode[0] + "Z" + extra;
+        }
         let issuedTime = "";
         if (lineSplit[2].length == 7) {
           issuedTime = lineSplit[2];
