@@ -157,7 +157,14 @@ const decodeOnebyOne = (group, typeBerita) => {
           .replace(/=/g, "");
 
         dataCode = dataCode.substring(0, 254);
-        dataCode = dataCode.split("Z");
+
+        if (center.slice(-1) === "Z" || icao.slice(-1) === "Z") {
+          const regex = /Z(?!.*Z)/;
+          dataCode = dataCode.split(regex);
+        } else {
+          dataCode = dataCode.split("Z");
+        }
+        
         if (regionalCode == "WIIX") {
           return;
         } else if (extra.startsWith("R")) {
