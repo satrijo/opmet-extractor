@@ -249,8 +249,13 @@ const decodeOnebyOne = (group, typeBerita) => {
           .replace(/=/g, "");
         dataCode = dataCode.substring(0, 254);
 
-        if (center.slice(-1) === 'Z' && icao.slice(-1) === 'Z') {
-          dataCode = dataCode.replace(/\b(\d+)Z\b/, '$1')
+        if (center.slice(-1) === "Z" && icao.slice(-1) === "Z") {
+          const regex = /(.*)Z\s(.*)/;
+          const matches = dataCode.match(regex);
+      
+          if (matches) {
+              dataCode = [matches[1], matches[2]];
+          }
         } else {
           dataCode = dataCode.split("Z");
         }
