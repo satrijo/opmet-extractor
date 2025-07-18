@@ -250,16 +250,11 @@ const decodeOnebyOne = (group, typeBerita) => {
         dataCode = dataCode.substring(0, 254);
 
         if (center.slice(-1) === "Z" || icao.slice(-1) === "Z") {
-          const regex = /(.*)Z\s(.*)/;
-          const matches = dataCode.match(regex);
-      
-          if (matches) {
-              dataCode = [matches[1], matches[2]];
-          }
+          const regex = /Z(?!.*Z)/;
+          dataCode = dataCode.split(regex);
         } else {
           dataCode = dataCode.split("Z");
         }
-
         if (regionalCode == "WIIX") {
           return;
         } else if (extra.startsWith("A") || extra.startsWith("R")) {
