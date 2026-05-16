@@ -225,7 +225,7 @@ const decodeOnebyOne = (group, typeBerita) => {
         //   return;
         // }
 
-        if(wiorwa !== "WI" || wiorwa !== "WA") {
+        if(wiorwa !== "WI" && wiorwa !== "WA") {
           if (line.includes("NIL")) {
             console.log("NIL");
             console.log(line);
