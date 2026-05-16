@@ -95,13 +95,28 @@ const decodeOnebyOne = (group, typeBerita) => {
   const datetime = header[2];
   const date = datetime.substring(0, 2);
 
-  const nowUtc = moment.utc();
-  let year = nowUtc.year().toString();
-  let month = String(nowUtc.month() + 1).padStart(2, "0");
-  let dateCurrent = String(nowUtc.date()).padStart(2, "0");
-  let hour = String(nowUtc.hour()).padStart(2, "0");
-  let minute = String(nowUtc.minute()).padStart(2, "0");
+  let dateNow = new Date();
+  dateNow = new Date(dateNow.getTime() - 7 * 3600000);
 
+  let month = dateNow.getMonth() + 1;
+  if (month < 10) {
+    month = "0" + month;
+  }
+  let dateCurrent = dateNow.getDate();
+  if (dateCurrent < 10) {
+    dateCurrent = "0" + dateCurrent;
+  }
+
+  let hour = dateNow.getHours();
+  if (hour < 10) {
+    hour = "0" + hour;
+  }
+
+  let minute = dateNow.getMinutes();
+  if (minute < 10) {
+    minute = "0" + minute;
+  }
+  let year = dateNow.getFullYear();
 
   const filling = `${year}-${month}-${date} ${datetime.substring(
     2,
@@ -210,13 +225,19 @@ const decodeOnebyOne = (group, typeBerita) => {
       if (lineSplit.length < 3) return;
       if (lineSplit.length < 4) return;
       if (lineSplit[0] == "TAF") {
+        if (line.includes("NIL")) {
+          console.log("NIL");
+          console.log(line);
+          return;
+        }
+
         let icao = "";
         if (lineSplit[1].length == 4) {
           icao = lineSplit[1];
         } else {
           icao = lineSplit[2];
         }
-        
+
         const wiorwa = icao.substring(0, 2);
         // console.log("wiorwa :" + wiorwa);
         // console.log("TAF ISI :" + lineSplit);
@@ -225,13 +246,6 @@ const decodeOnebyOne = (group, typeBerita) => {
         //   return;
         // }
 
-        if(wiorwa !== "WI" || wiorwa !== "WA") {
-          if (line.includes("NIL")) {
-            console.log("NIL");
-            console.log(line);
-            return;
-          }
-        }
         const dataText = line;
         let dataCode = datacode_date + dataText;
         dataCode = dataCode
