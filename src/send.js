@@ -102,10 +102,9 @@ const decodeOnebyOne = (group, typeBerita) => {
   let hour = String(nowUtc.hour()).padStart(2, "0");
   let minute = String(nowUtc.minute()).padStart(2, "0");
 
-
   const filling = `${year}-${month}-${date} ${datetime.substring(
     2,
-    4
+    4,
   )}:${datetime.substring(4, 6)}`;
 
   const datacode_date = `${year}-${month}-${date}`;
@@ -149,7 +148,7 @@ const decodeOnebyOne = (group, typeBerita) => {
         } else {
           dataCode = dataCode.split("Z");
         }
-        
+
         if (regionalCode == "WIIX") {
           return;
         } else if (extra.startsWith("R")) {
@@ -165,7 +164,7 @@ const decodeOnebyOne = (group, typeBerita) => {
           `INSERT INTO metar_speci (data_code, type_code, regional_code, bulletin_code, centre_code,filling_time,extra_code,icao_code,observed_time,data_text,insert_time) VALUES ('${dataCode}', '${type}', '${regional}', '${bulletin}', '${center}', '${filling}', '${extra}', '${icao}', '${filling}', '${dataText}', '${insert}')`,
           (err, result) => {
             console.log(result);
-          }
+          },
         );
 
         try {
@@ -216,7 +215,7 @@ const decodeOnebyOne = (group, typeBerita) => {
         } else {
           icao = lineSplit[2];
         }
-        
+
         const wiorwa = icao.substring(0, 2);
         // console.log("wiorwa :" + wiorwa);
         // console.log("TAF ISI :" + lineSplit);
@@ -225,13 +224,10 @@ const decodeOnebyOne = (group, typeBerita) => {
         //   return;
         // }
 
-        if(wiorwa !== "WI" && wiorwa !== "WA") {
-          if (line.includes("NIL")) {
-            console.log("NIL");
-            console.log(line);
-            return;
-          }
+        if (line.includes("NIL") && wiorwa !== "WI" && wiorwa !== "WA") {
+          return;
         }
+
         const dataText = line;
         let dataCode = datacode_date + dataText;
         dataCode = dataCode
@@ -250,8 +246,8 @@ const decodeOnebyOne = (group, typeBerita) => {
         }
         if (regionalCode == "WIIX") {
           return;
-        // } else if (extra.startsWith("A") || extra.startsWith("R")) {
-        //   return;
+          // } else if (extra.startsWith("A") || extra.startsWith("R")) {
+          //   return;
         } else if (!dataText.includes("=")) {
           return;
         } else if (regionalCode.startsWith("K")) {
@@ -370,8 +366,7 @@ const decodeOnebyOne = (group, typeBerita) => {
           }
           // console.log("valid_from :" + compiledValidFrom);
           // console.log("valid_until :" + compiledValidUntil);
-          pool.query(
-            `INSERT INTO taf (
+          const query = `INSERT INTO taf (
           data_code,
           type_code,
           regional_code,
@@ -385,25 +380,32 @@ const decodeOnebyOne = (group, typeBerita) => {
           valid_until,
           data_text,
           insert_time) VALUES
-          ('${dataCode}',
-          '${type}',
-          '${regional}',
-          '${bulletin}',
-          '${center}',
-          '${filling}',
-          '${extra}',
-          '${icao}',
-          '${compiledIssuedTime}',
-          '${compiledValidFrom}',
-          '${compiledValidUntil}',
-          '${dataText}',
-          '${insert}')`,
+          (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+          const values = [
+            dataCode,
+            type,
+            regional,
+            bulletin,
+            center,
+            filling,
+            extra,
+            icao,
+            compiledIssuedTime,
+            compiledValidFrom,
+            compiledValidUntil,
+            dataText,
+            insert,
+          ];
+
+          pool.query(
+            query,
+            values,
             (err, result) => {
               console.log(result);
               if (err) {
                 console.log(err);
               }
-            }
+            },
           );
 
           try {
@@ -476,10 +478,10 @@ const decodeOnebyOne = (group, typeBerita) => {
 
         const compiledValidFrom = `${year}-${month}-${splitValidTime[0].substring(
           0,
-          2
+          2,
         )} ${splitValidTime[0].substring(2, 4)}:${splitValidTime[0].substring(
           4,
-          6
+          6,
         )}`;
 
         // check if date until less than from
@@ -502,10 +504,10 @@ const decodeOnebyOne = (group, typeBerita) => {
 
         const compiledValidUntil = `${year}-${month}-${splitValidTime[1].substring(
           0,
-          2
+          2,
         )} ${splitValidTime[1].substring(2, 4)}:${splitValidTime[1].substring(
           4,
-          6
+          6,
         )}`;
 
         // console.log("valid_until :" + compiledValidUntil);
@@ -545,7 +547,7 @@ const decodeOnebyOne = (group, typeBerita) => {
             if (err) {
               console.log(err);
             }
-          }
+          },
         );
 
         // if (wiorwa == "WI" || wiorwa == "WA") {
@@ -583,7 +585,7 @@ const decodeOnebyOne = (group, typeBerita) => {
         if (err) {
           console.log(err);
         }
-      }
+      },
     );
   } else if (typeBerita == "SYNOP") {
     if (regionalCode == "WIIL") {
