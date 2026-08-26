@@ -151,8 +151,8 @@ const decodeOnebyOne = (group, typeBerita) => {
 
         if (regionalCode == "WIIX") {
           return;
-        } else if (extra.startsWith("R")) {
-          return;
+        //} else if (extra.startsWith("R")) {
+        //  return;
         } else if (!dataText.includes("=")) {
           return;
         } else if (regionalCode.startsWith("KW")) {
