@@ -434,133 +434,104 @@ const decodeOnebyOne = (group, typeBerita) => {
     });
   } else if (typeBerita == "SIGMET") {
     const lineHeader = group[0];
-    const line = [...group].slice(1).join(" ");
-    const lineSplit = line.split(" ");
-    if (lineSplit[1] == "SIGMET") {
-      if (line.includes("NIL")) {
-        return;
-      }
+    const line = [...group].slice(1).join(" ").replace(/\s+/g, " ").trim();
+    if (line.includes("NIL") || !line.includes("SIGMET")) {
+      return;
+    }
 
-      const wiorwa = lineSplit[1].substring(0, 2);
-      // console.log("wiorwa :" + wiorwa);
+    const norm = line;
+    const validMatch = norm.match(/VALID\s+(\d{6})\/(\d{6})/i);
+    const sigmetMatch = norm.match(/(?:([A-Z]{4})\s+)?SIGMET\s+([A-Z0-9\s]+?)\s+VALID/i);
 
-      let icao = center;
-      let ats_code = lineSplit[0];
-      let sequence_code = lineSplit[2];
+    let ats_code = "";
+    let sequence_code = "";
+    if (sigmetMatch) {
+      ats_code = sigmetMatch[1] || "";
+      sequence_code = sigmetMatch[2].trim();
+    }
 
-      const numbersInWord = sequence_code.match(/\d+/);
-
-      if (numbersInWord) {
-        sequence_code = numbersInWord[0];
-      }
-
-      const dataText = line;
-      let dataCode = datacode_date + dataText;
-      dataCode = dataCode
-        .replace(/-/g, "")
-        .replace(/:/g, "")
-        .replace(/\s/g, "")
-        // replace = with nothing
-        .replace(/=/g, "");
-      dataCode = dataCode.substring(0, 254);
-      dataCode = dataCode.split("Z");
-      dataCode = dataCode[0] + "Z" + extra;
-      let validTime = "";
-
-      if (lineSplit[4].length == 13) {
-        validTime = lineSplit[4];
+    if (!ats_code) {
+      const firMatch = norm.match(/([A-Z]{4})\s+(?:[A-Z\s\/]+)?FIR/i);
+      if (firMatch) {
+        ats_code = firMatch[1];
       } else {
-        validTime = lineSplit[5];
+        ats_code = center;
       }
+    }
 
-      if (validTime && validTime.length == 13) {
-        let splitValidTime = validTime.split("/");
+    let icao = center;
+    const dataText = line;
+    let dataCode = datacode_date + dataText;
+    dataCode = dataCode
+      .replace(/-/g, "")
+      .replace(/:/g, "")
+      .replace(/\s/g, "")
+      .replace(/=/g, "");
+    dataCode = dataCode.substring(0, 254);
+    if (dataCode.includes("Z")) {
+      dataCode = dataCode.split("Z")[0] + "Z" + extra;
+    }
 
-        const compiledValidFrom = `${year}-${month}-${splitValidTime[0].substring(
-          0,
-          2,
-        )} ${splitValidTime[0].substring(2, 4)}:${splitValidTime[0].substring(
-          4,
-          6,
-        )}`;
+    if (validMatch) {
+      let date_from = validMatch[1].substring(0, 2);
+      let date_until = validMatch[2].substring(0, 2);
 
-        // check if date until less than from
-        let date_from = splitValidTime[0].substring(0, 2);
-        let date_until = splitValidTime[1].substring(0, 2);
+      let validFromMonth = month;
+      let validFromYear = year;
+      let validUntilMonth = month;
+      let validUntilYear = year;
 
-        if (parseInt(date_from) > parseInt(date_until)) {
-          if (parseInt(month) < 12) {
-            month = parseInt(month) + 1;
-            if (month < 10) {
-              month = "0" + month.toString();
-            }
-          } else {
-            month = "01";
-            year = parseInt(year);
-            year = year + 1;
-            year = year.toString();
-          }
+      if (parseInt(date_from) > parseInt(date_until)) {
+        if (parseInt(month) < 12) {
+          let m = parseInt(month) + 1;
+          validUntilMonth = m < 10 ? "0" + m : m.toString();
+        } else {
+          validUntilMonth = "01";
+          validUntilYear = (parseInt(year) + 1).toString();
         }
-
-        const compiledValidUntil = `${year}-${month}-${splitValidTime[1].substring(
-          0,
-          2,
-        )} ${splitValidTime[1].substring(2, 4)}:${splitValidTime[1].substring(
-          4,
-          6,
-        )}`;
-
-        // console.log("valid_until :" + compiledValidUntil);
-
-        pool.query(
-          `INSERT INTO sigmet (
-          data_code,
-          type_code,
-          regional_code,
-          bulletin_code,
-          centre_code,
-          filling_time,
-          extra_code,
-          ats_code,
-          sequence_code,
-          valid_from,
-          valid_until,
-          icao_code,
-          data_text,
-          insert_time) VALUES
-          ('${dataCode}',
-          '${type}',
-          '${regional}',
-          '${bulletin}',
-          '${center}',
-          '${filling}',
-          '${extra}',
-          '${ats_code}',
-          '${sequence_code}',
-          '${compiledValidFrom}',
-          '${compiledValidUntil}',
-          '${icao}',
-          '${dataText}',
-          '${insert}')`,
-          (err, result) => {
-            console.log(result);
-            if (err) {
-              console.log(err);
-            }
-          },
-        );
-
-        // if (wiorwa == "WI" || wiorwa == "WA") {
-        //   try {
-        //     if (regionalCode === "WIIX") {
-        //       return;
-        //     }
-        //     const idopSend = idop(headerSandi + "\n" + line);
-        //   } catch (error) {
-        //     console.log(error);
-        //   }
-        // }
       }
+
+      const compiledValidFrom = `${validFromYear}-${validFromMonth}-${date_from} ${validMatch[1].substring(2, 4)}:${validMatch[1].substring(4, 6)}:00`;
+      const compiledValidUntil = `${validUntilYear}-${validUntilMonth}-${date_until} ${validMatch[2].substring(2, 4)}:${validMatch[2].substring(4, 6)}:00`;
+
+      const query = `INSERT INTO sigmet (
+        data_code,
+        type_code,
+        regional_code,
+        bulletin_code,
+        centre_code,
+        filling_time,
+        extra_code,
+        ats_code,
+        sequence_code,
+        valid_from,
+        valid_until,
+        icao_code,
+        data_text,
+        insert_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+      const values = [
+        dataCode,
+        type,
+        regional,
+        bulletin,
+        center,
+        filling,
+        extra,
+        ats_code,
+        sequence_code,
+        compiledValidFrom,
+        compiledValidUntil,
+        icao,
+        dataText,
+        insert,
+      ];
+
+      pool.query(query, values, (err, result) => {
+        if (err) {
+          console.error("Error inserting SIGMET:", err);
+        }
+      });
     }
   } else if (typeBerita == "FN") {
     let id_code = `${headerSandi}-${sliceGroup[1]}`;
