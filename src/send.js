@@ -122,10 +122,12 @@ const decodeOnebyOne = (group, typeBerita) => {
         }
 
         let icao = "";
-        if (lineSplit[1].length == 4) {
+        if (lineSplit[1] && lineSplit[1].length == 4) {
           icao = lineSplit[1];
-        } else {
+        } else if (lineSplit[2] && lineSplit[2].length == 4) {
           icao = lineSplit[2];
+        } else {
+          icao = center;
         }
 
         const wiorwa = icao.substring(0, 2);
@@ -160,12 +162,42 @@ const decodeOnebyOne = (group, typeBerita) => {
         } else {
           dataCode = dataCode[0] + "Z" + extra;
         }
-        pool.query(
-          `INSERT INTO metar_speci (data_code, type_code, regional_code, bulletin_code, centre_code,filling_time,extra_code,icao_code,observed_time,data_text,insert_time) VALUES ('${dataCode}', '${type}', '${regional}', '${bulletin}', '${center}', '${filling}', '${extra}', '${icao}', '${filling}', '${dataText}', '${insert}')`,
-          (err, result) => {
-            console.log(result);
-          },
-        );
+        const query = `INSERT INTO metar_speci (
+          data_code,
+          type_code,
+          regional_code,
+          bulletin_code,
+          centre_code,
+          filling_time,
+          extra_code,
+          icao_code,
+          observed_time,
+          data_text,
+          insert_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON DUPLICATE KEY UPDATE
+          observed_time = VALUES(observed_time),
+          data_text = VALUES(data_text),
+          insert_time = VALUES(insert_time)`;
+
+        const values = [
+          Array.isArray(dataCode) ? dataCode[0] : dataCode,
+          type,
+          regional,
+          bulletin,
+          center,
+          filling,
+          extra,
+          icao,
+          filling,
+          dataText,
+          insert,
+        ];
+
+        pool.query(query, values, (err, result) => {
+          if (err) {
+            console.error("Error inserting METAR:", err);
+          }
+        });
 
         try {
           let headerSandiString = headerSandi;
@@ -380,7 +412,13 @@ const decodeOnebyOne = (group, typeBerita) => {
           valid_until,
           data_text,
           insert_time) VALUES
-          (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+          (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON DUPLICATE KEY UPDATE
+          issued_time = VALUES(issued_time),
+          valid_from = VALUES(valid_from),
+          valid_until = VALUES(valid_until),
+          data_text = VALUES(data_text),
+          insert_time = VALUES(insert_time)`;
           const values = [
             dataCode,
             type,
@@ -532,30 +570,26 @@ const decodeOnebyOne = (group, typeBerita) => {
       });
     }
   } else if (typeBerita == "FN") {
-    let id_code = `${headerSandi}-${sliceGroup[1]}`;
-    // DATETIME - format: YYYY-MM-DD HH:MI:SS form date now
+    const rawCode = Array.isArray(sliceGroup[1]) ? sliceGroup[1].join("\n") : String(sliceGroup[1]);
+    let id_code = `${headerSandi}-${rawCode}`;
     let insert = moment().format("YYYY-MM-DD HH:mm:ss");
-    id_code = id_code.substring(0, 254).replace(" ", "_");
+    id_code = id_code.substring(0, 254).replace(/\s+/g, "_");
 
-    console.log("id_code : " + id_code);
-    console.log("insert : " + insert);
+    const query = `INSERT INTO space_weather (
+        id_code,
+        header,
+        code,
+        time) VALUES (?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+        header = VALUES(header),
+        code = VALUES(code),
+        time = VALUES(time)`;
 
-    pool.query(
-      `INSERT INTO space_weather (
-          id_code,
-          header,
-          code,
-          time) VALUES
-          ('${id_code}','${headerSandi}',
-          '${sliceGroup[1]}',
-          '${insert}')`,
-      (err, result) => {
-        console.log(result);
-        if (err) {
-          console.log(err);
-        }
-      },
-    );
+    pool.query(query, [id_code, headerSandi, rawCode, insert], (err, result) => {
+      if (err) {
+        console.error("Error inserting space weather:", err);
+      }
+    });
   } else if (typeBerita == "SYNOP") {
     if (regionalCode == "WIIL") {
       // sendWhatsapp(`Data Sandi WIIL ${group}`, "6282111119138");
