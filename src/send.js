@@ -461,16 +461,9 @@ const decodeOnebyOne = (group, typeBerita) => {
 
     let icao = center;
     const dataText = line;
-    let dataCode = datacode_date + dataText;
-    dataCode = dataCode
-      .replace(/-/g, "")
-      .replace(/:/g, "")
-      .replace(/\s/g, "")
-      .replace(/=/g, "");
-    dataCode = dataCode.substring(0, 254);
-    if (dataCode.includes("Z")) {
-      dataCode = dataCode.split("Z")[0] + "Z" + extra;
-    }
+    let dataCode = `${datacode_date}${center}${ats_code}${sequence_code}${validMatch ? validMatch[1] + validMatch[2] : ""}${extra}`
+      .replace(/[^A-Za-z0-9]/g, "")
+      .substring(0, 254);
 
     if (validMatch) {
       let date_from = validMatch[1].substring(0, 2);
@@ -508,7 +501,12 @@ const decodeOnebyOne = (group, typeBerita) => {
         valid_until,
         icao_code,
         data_text,
-        insert_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        insert_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+        data_text = VALUES(data_text),
+        valid_from = VALUES(valid_from),
+        valid_until = VALUES(valid_until),
+        insert_time = VALUES(insert_time)`;
 
       const values = [
         dataCode,
