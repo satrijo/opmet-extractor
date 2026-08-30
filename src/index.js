@@ -10,18 +10,17 @@ env.config();
 const nodeEnv = process.env.NODE_ENV;
 
 if (nodeEnv !== "development") {
+  console.log("[CRON] Service scheduler started (running every 10 seconds)...");
   cron.schedule("*/10 * * * * *", async () => {
     try {
       const opmetData = await opmet();
-      const sendData = await send(opmetData);
-      let date = new Date();
-      console.log("running a task every 10 seconds " + date);
-      // to UTC +0
-      date = new Date(date.getTime() - 7 * 3600000);
-      console.log("running a task every 10 seconds " + date);
+      if (opmetData && opmetData.length > 0) {
+        await send(opmetData);
+      }
+      const now = new Date();
+      console.log(`[CRON] Task cycle completed at ${now.toISOString()}`);
     } catch (error) {
-      console.error("Error handling request:", error);
-      res.status(500).json({ error: "Internal Server Error" });
+      console.error("[CRON:ERROR] Error during extraction/send cycle:", error);
     }
   });
 } else {

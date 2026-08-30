@@ -13,6 +13,9 @@ const opmet = () => {
   let datas = [];
   try {
     const checkFolder = (folder, type) => {
+      if (!folder || !fs.existsSync(folder)) {
+        return;
+      }
       const files = fs.readdirSync(folder);
       files.forEach((file) => {
         const filePath = path.join(folder, file);
@@ -22,6 +25,7 @@ const opmet = () => {
           file.includes(".a") ||
           file.includes(".b")
         ) {
+          console.log(`[FILE:READ] Processing ${type} file: ${file}`);
           const data = fs.readFileSync(filePath, "utf8");
           let dataLines = data.split("\n");
           const dataCleansing = [];
@@ -41,6 +45,8 @@ const opmet = () => {
             dataCleansing.push(group);
           }
 
+          console.log(`[FILE:EXTRACT] ${file}: Found ${dataCleansing.length} raw group(s)`);
+
           const newData = dataCleansing
             .map((group) => group.slice(2))
             .map((group) =>
@@ -52,50 +58,37 @@ const opmet = () => {
             .map((group) => combineLines(group))
             .map((group) => cleanLines(group))
             .map((group) => checkIfDouble(group))
-            // if array length is 0, then delete
             .filter((group) => group.length > 0);
 
+          console.log(`[FILE:EXTRACT] ${file}: Extracted ${newData.length} parsed bulletin group(s)`);
           datas.push(newData);
-          if (type == "transmet") {
-            // fs.unlinkSync(filePath);
-            fs.renameSync(filePath, path.join(trash, file), (err) => {
-              if (err) throw err;
-              console.log("Successfully moved");
-            });
-          }
 
-          if (type == "cmss") {
-            // fs.unlinkSync(filePath);
-            fs.renameSync(filePath, path.join(trash, file), (err) => {
-              if (err) throw err;
-              console.log("Successfully moved");
-            });
-          }
-
-          if (type == "wifs") {
-            // fs.unlinkSync(filePath);
-            fs.renameSync(filePath, path.join(trash, file), (err) => {
-              if (err) throw err;
-              console.log("Successfully moved");
-            });
+          if (trash && fs.existsSync(trash)) {
+            try {
+              fs.renameSync(filePath, path.join(trash, file));
+              console.log(`[FILE:ARCHIVE] Moved ${file} to trash folder`);
+            } catch (renameErr) {
+              console.error(`[FILE:ARCHIVE:ERROR] Failed moving ${file} to trash:`, renameErr.message);
+            }
           }
         } else {
-          if (type == "transmet") {
-            // fs.unlinkSync(filePath);
-            fs.renameSync(filePath, path.join(trash, file), (err) => {
-              if (err) throw err;
-              console.log("Successfully moved");
-            });
+          if (type === "transmet" && trash && fs.existsSync(trash)) {
+            try {
+              fs.renameSync(filePath, path.join(trash, file));
+              console.log(`[FILE:ARCHIVE] Moved non-opmet transmet file ${file} to trash`);
+            } catch (renameErr) {
+              console.error(`[FILE:ARCHIVE:ERROR] Failed moving ${file} to trash:`, renameErr.message);
+            }
           }
         }
       });
     };
 
-    const transmet = checkFolder(transmetPath, "transmet");
-    const cmss = checkFolder(cmssPath, "cmss");
-    const wifs = checkFolder(wifsPath, "wifs");
+    checkFolder(transmetPath, "transmet");
+    checkFolder(cmssPath, "cmss");
+    checkFolder(wifsPath, "wifs");
   } catch (err) {
-    console.error("Error reading directory:", err);
+    console.error("[OPMET:ERROR] Error reading directory:", err);
     throw err;
   }
   return datas;
