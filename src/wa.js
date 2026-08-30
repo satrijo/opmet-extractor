@@ -8,10 +8,8 @@ const urlWA = process.env.URL_WA;
 const isGroup = process.env.IS_GROUP;
 
 const sendWA = (result, targetNumber) => {
-  // date UTC Greenwich
   const date = new Date();
   const dateIndo = date;
-  const jamIndo = dateIndo.getHours();
   const hari = dateIndo.getDay();
   const tanggal = dateIndo.getDate();
   const bulan = dateIndo.getMonth();
@@ -36,21 +34,19 @@ const sendWA = (result, targetNumber) => {
     "September",
     "Oktober",
     "November",
-    "Desember ",
+    "Desember",
   ];
 
   const hariIni = hariIndo[hari];
   const tanggalIni = tanggal;
   const bulanIni = bulanIndo[bulan];
 
-  const jamUTC = date.getUTCHours();
-
   let message = "";
   message += `Laporan Monitoring Space Weather \n${hariIni}, ${tanggalIni} ${bulanIni} ${date.getFullYear()}\n\n`;
-
   message += `*Berita :* \n${result}\n`;
-
   message += `\n\n*Note: _Digenerate pada tanggal ${dateIndo}_*\n`;
+
+  console.log(`[WA:TRIGGER] Sending WhatsApp notification to ${targetNumber}...`);
   var options = {
     method: "POST",
     url: urlWA,
@@ -64,8 +60,11 @@ const sendWA = (result, targetNumber) => {
     },
   };
   request(options, function (error, response) {
-    if (error) throw new Error(error);
-    console.log(response.body);
+    if (error) {
+      console.error(`[WA:ERROR] Failed sending WA to ${targetNumber}:`, error.message || error);
+      return;
+    }
+    console.log(`[WA:RESPONSE] Status: ${response?.statusCode} | Body: ${response?.body}`);
   });
 };
 

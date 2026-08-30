@@ -8,67 +8,71 @@ env.config();
 
 const send = (opmetData) => {
   const data = opmetData;
+  if (!data || data.length === 0) {
+    console.log("[SEND] No OPMET data to process");
+    return;
+  }
+  console.log(`[SEND] Processing ${data.length} file dataset(s)...`);
   data.forEach((e) => {
     sendDB(e);
   });
 };
 
 const sendDB = (data) => {
+  if (!data || data.length === 0) {
+    console.log("[SEND:DB] Empty dataset received");
+    return;
+  }
   data.forEach((group) => {
     const length = group.length;
     if (length < 1) {
-      return group;
+      console.log("[BULLETIN:EMPTY] Skipped empty bulletin group");
+      return;
     }
     const header = group[0].split(" ");
     const identifier = header[0];
 
     if (identifier.startsWith("SA") || identifier.startsWith("SP")) {
       try {
-        const metar = decodeOnebyOne(group, "METAR");
+        console.log(`[BULLETIN] Header: "${group[0]}", Type: METAR, Lines: ${group.length}`);
+        decodeOnebyOne(group, "METAR");
       } catch (error) {
-        console.log(error);
-        // skip
+        console.error(`[DECODE:ERROR] Failed decoding METAR bulletin ("${group[0]}"):`, error);
       }
-    }
-
-    if (
+    } else if (
       identifier.startsWith("SNID") ||
       identifier.startsWith("SMID") ||
       identifier.startsWith("SIID")
     ) {
       try {
-        const taf = decodeOnebyOne(group, "SYNOP");
+        console.log(`[BULLETIN] Header: "${group[0]}", Type: SYNOP, Lines: ${group.length}`);
+        decodeOnebyOne(group, "SYNOP");
       } catch (error) {
-        console.log(error);
-        // skip
+        console.error(`[DECODE:ERROR] Failed decoding SYNOP bulletin ("${group[0]}"):`, error);
       }
-    }
-
-    if (identifier.startsWith("FT") || identifier.startsWith("FC")) {
+    } else if (identifier.startsWith("FT") || identifier.startsWith("FC")) {
       try {
-        const taf = decodeOnebyOne(group, "TAF");
+        console.log(`[BULLETIN] Header: "${group[0]}", Type: TAF, Lines: ${group.length}`);
+        decodeOnebyOne(group, "TAF");
       } catch (error) {
-        console.log(error);
-        // skip
+        console.error(`[DECODE:ERROR] Failed decoding TAF bulletin ("${group[0]}"):`, error);
       }
-    }
-
-    if (identifier.startsWith("W")) {
+    } else if (identifier.startsWith("W")) {
       try {
-        const sigmet = decodeOnebyOne(group, "SIGMET");
+        console.log(`[BULLETIN] Header: "${group[0]}", Type: SIGMET, Lines: ${group.length}`);
+        decodeOnebyOne(group, "SIGMET");
       } catch (error) {
-        console.log(error);
+        console.error(`[DECODE:ERROR] Failed decoding SIGMET bulletin ("${group[0]}"):`, error);
       }
-    }
-
-    // start with FN
-
-    if (identifier.startsWith("FN")) {
+    } else if (identifier.startsWith("FN")) {
       try {
-        const fn = decodeOnebyOne(group, "FN");
+        console.log(`[BULLETIN] Header: "${group[0]}", Type: FN (Space Weather), Lines: ${group.length}`);
+        decodeOnebyOne(group, "FN");
       } catch (error) {
-        console.log(error);
+        console.error(`[DECODE:ERROR] Failed decoding FN bulletin ("${group[0]}"):`, error);
       }
+    } else {
+      console.log(`[BULLETIN:UNKNOWN] Unknown bulletin identifier "${identifier}" in header: "${group[0]}"`);
     }
   });
 };
@@ -78,13 +82,20 @@ const sendWhatsapp = async (fn, targetNumber) => {
 };
 
 const decodeOnebyOne = (group, typeBerita) => {
+  if (!group || group.length === 0 || !group[0]) {
+    console.warn(`[DECODE:WARN] Empty group for ${typeBerita}`);
+    return;
+  }
   const sliceGroup = [[group[0]], group.slice(1)];
   const header = sliceGroup[0][0].split(" ");
 
+  if (header.length < 3) {
+    console.warn(`[DECODE:WARN] Malformed header (${sliceGroup[0][0]}) for ${typeBerita}`);
+    return;
+  }
+
   const headerSandi = sliceGroup[0][0];
-
   const identifier = header[0];
-
   const regionalCode = header[1];
 
   const type = identifier.substring(0, 2);
@@ -96,50 +107,46 @@ const decodeOnebyOne = (group, typeBerita) => {
   const date = datetime.substring(0, 2);
 
   const nowUtc = moment.utc();
-  let year = nowUtc.year().toString();
-  let month = String(nowUtc.month() + 1).padStart(2, "0");
+  let defaultYear = nowUtc.year().toString();
+  let defaultMonth = String(nowUtc.month() + 1).padStart(2, "0");
   let dateCurrent = String(nowUtc.date()).padStart(2, "0");
   let hour = String(nowUtc.hour()).padStart(2, "0");
   let minute = String(nowUtc.minute()).padStart(2, "0");
 
-  const filling = `${year}-${month}-${date} ${datetime.substring(
+  const filling = `${defaultYear}-${defaultMonth}-${date} ${datetime.substring(
     2,
     4,
   )}:${datetime.substring(4, 6)}`;
 
-  const datacode_date = `${year}-${month}-${date}`;
-
-  const insert = `${year}-${month}-${dateCurrent} ${hour}:${minute}`;
+  const datacode_date = `${defaultYear}-${defaultMonth}-${date}`;
+  const insert = `${defaultYear}-${defaultMonth}-${dateCurrent} ${hour}:${minute}`;
   let extra = header[3] ?? "";
 
-  if (typeBerita == "METAR") {
-    sliceGroup[1].map(async (line) => {
+  if (typeBerita === "METAR") {
+    sliceGroup[1].forEach((line) => {
       const lineSplit = line.split(" ");
-      // console.log("METAR ISI :" + lineSplit);
-      if (lineSplit[0] == "METAR" || lineSplit[0] == "SPECI") {
+      if (lineSplit[0] === "METAR" || lineSplit[0] === "SPECI") {
         if (line.includes("NIL")) {
+          console.log(`[INFO:SKIP] [METAR] Skipped NIL report: "${line}"`);
           return;
         }
 
         let icao = "";
-        if (lineSplit[1] && lineSplit[1].length == 4) {
+        if (lineSplit[1] && lineSplit[1].length === 4) {
           icao = lineSplit[1];
-        } else if (lineSplit[2] && lineSplit[2].length == 4) {
+        } else if (lineSplit[2] && lineSplit[2].length === 4) {
           icao = lineSplit[2];
         } else {
           icao = center;
         }
 
         const wiorwa = icao.substring(0, 2);
-        // console.log("wiorwa :" + wiorwa);
-
         const dataText = line;
         let dataCode = datacode_date + dataText;
         dataCode = dataCode
           .replace(/-/g, "")
           .replace(/:/g, "")
           .replace(/\s/g, "")
-          // replace = with nothing
           .replace(/=/g, "");
 
         dataCode = dataCode.substring(0, 254);
@@ -151,13 +158,14 @@ const decodeOnebyOne = (group, typeBerita) => {
           dataCode = dataCode.split("Z");
         }
 
-        if (regionalCode == "WIIX") {
+        if (regionalCode === "WIIX") {
+          console.log(`[WARN:DROP] [METAR] Dropped station ${icao} with regionalCode WIIX: "${line}"`);
           return;
-        //} else if (extra.startsWith("R")) {
-        //  return;
         } else if (!dataText.includes("=")) {
+          console.warn(`[WARN:DROP] [METAR] Dropped station ${icao} because missing '=' delimiter: "${line}"`);
           return;
         } else if (regionalCode.startsWith("KW")) {
+          console.log(`[WARN:DROP] [METAR] Dropped station ${icao} with regionalCode KW* (${regionalCode}): "${line}"`);
           return;
         } else {
           dataCode = dataCode[0] + "Z" + extra;
@@ -179,8 +187,9 @@ const decodeOnebyOne = (group, typeBerita) => {
           data_text = VALUES(data_text),
           insert_time = VALUES(insert_time)`;
 
+        const finalDataCode = Array.isArray(dataCode) ? dataCode[0] : dataCode;
         const values = [
-          Array.isArray(dataCode) ? dataCode[0] : dataCode,
+          finalDataCode,
           type,
           regional,
           bulletin,
@@ -193,70 +202,58 @@ const decodeOnebyOne = (group, typeBerita) => {
           insert,
         ];
 
+        console.log(`[DB:START] [METAR] Inserting: ICAO=${icao}, DataCode=${finalDataCode}`);
         pool.query(query, values, (err, result) => {
           if (err) {
-            console.error("Error inserting METAR:", err);
+            console.error(`[DB:ERROR] [METAR] Failed inserting ${icao} (${finalDataCode}):`, err.message);
+          } else {
+            const status = result?.affectedRows === 1 ? "INSERTED" : "UPDATED_DUPLICATE";
+            console.log(`[DB:SUCCESS] [METAR] Saved ${icao} (${finalDataCode}) -> ${status} (affected: ${result?.affectedRows})`);
           }
         });
 
         try {
           let headerSandiString = headerSandi;
-          if (regionalCode !== icao || regionalCode == "WIIX") {
+          if (regionalCode !== icao || regionalCode === "WIIX") {
             let headerSandiArray = headerSandi.split(" ");
-            console.log(`Rubah icao ${headerSandiArray[1]} ke ${icao}`);
             headerSandiArray[1] = icao;
 
-            if (regionalCode == "WIIX" && headerSandiArray.length == 4) {
-              // delete index 3
-              console.log(`Hapus ${headerSandiArray[3]} = ${headerSandi}`);
+            if (regionalCode === "WIIX" && headerSandiArray.length === 4) {
               headerSandiArray[3] = "";
-              console.log(`Menjadi ${headerSandiArray.join(" ")}`);
             }
 
-            headerSandiString = headerSandiArray.join(" ");
-            headerSandiString = headerSandiString.trim();
+            headerSandiString = headerSandiArray.join(" ").trim();
           }
-          // cek kalo variable line mengandung = maka boleh send idop
           if (line.includes("=")) {
-            const idopSend = idop(headerSandiString + "\n" + line);
-            // if (icao == "WAHL") {
-            //   sendWhatsapp(`${headerSandiString}\n${line}`, "6282111119138");
-            // }
+            console.log(`[IDOP:TRIGGER] [METAR] Uploading ${icao} to IDOP (Header: ${headerSandiString})`);
+            idop(headerSandiString + "\n" + line);
           }
         } catch (error) {
-          console.log(error);
-        }
-
-        if (wiorwa == "WI" || wiorwa == "WA") {
+          console.error(`[IDOP:ERROR] [METAR] Failed sending ${icao} to IDOP:`, error.message || error);
         }
       }
     });
-  } else if (typeBerita == "TAF") {
-    sliceGroup[1].map((line) => {
+  } else if (typeBerita === "TAF") {
+    sliceGroup[1].forEach((line) => {
       line = line.toString();
       const lineSplit = line.split(" ");
-      // console.log("TAF ISI :" + lineSplit);
 
-      if (lineSplit.length < 2) return;
-      if (lineSplit.length < 3) return;
-      if (lineSplit.length < 4) return;
-      if (lineSplit[0] == "TAF") {
+      if (lineSplit.length < 4) {
+        console.warn(`[WARN:DROP] [TAF] Dropped malformed line (tokens < 4): "${line}"`);
+        return;
+      }
+      if (lineSplit[0] === "TAF") {
         let icao = "";
-        if (lineSplit[1].length == 4) {
+        if (lineSplit[1].length === 4) {
           icao = lineSplit[1];
         } else {
           icao = lineSplit[2];
         }
 
         const wiorwa = icao.substring(0, 2);
-        // console.log("wiorwa :" + wiorwa);
-        // console.log("TAF ISI :" + lineSplit);
-
-        // if (regionalCode !== icao) {
-        //   return;
-        // }
 
         if (line.includes("NIL") && wiorwa !== "WI" && wiorwa !== "WA") {
+          console.log(`[INFO:SKIP] [TAF] Skipped foreign NIL report: ICAO=${icao}, line="${line}"`);
           return;
         }
 
@@ -266,7 +263,6 @@ const decodeOnebyOne = (group, typeBerita) => {
           .replace(/-/g, "")
           .replace(/:/g, "")
           .replace(/\s/g, "")
-          // replace = with nothing
           .replace(/=/g, "");
         dataCode = dataCode.substring(0, 254);
 
@@ -276,128 +272,84 @@ const decodeOnebyOne = (group, typeBerita) => {
         } else {
           dataCode = dataCode.split("Z");
         }
-        if (regionalCode == "WIIX") {
+        if (regionalCode === "WIIX") {
+          console.log(`[WARN:DROP] [TAF] Dropped station ${icao} with regionalCode WIIX: "${line}"`);
           return;
-          // } else if (extra.startsWith("A") || extra.startsWith("R")) {
-          //   return;
         } else if (!dataText.includes("=")) {
+          console.warn(`[WARN:DROP] [TAF] Dropped station ${icao} because missing '=' delimiter: "${line}"`);
           return;
         } else if (regionalCode.startsWith("K")) {
+          console.log(`[WARN:DROP] [TAF] Dropped station ${icao} with regionalCode K* (${regionalCode}): "${line}"`);
           return;
         } else {
           dataCode = dataCode[0] + "Z" + extra;
         }
+
         let issuedTime = "";
-        if (lineSplit[2].length == 7) {
+        if (lineSplit[2].length === 7) {
           issuedTime = lineSplit[2];
         } else {
           issuedTime = lineSplit[3];
         }
-        if (issuedTime && issuedTime.length == 7) {
+
+        if (issuedTime && issuedTime.length === 7) {
+          let yearLine = defaultYear;
+          let monthLine = defaultMonth;
           let dateIssued = issuedTime.substring(0, 2);
           let hourIssued = issuedTime.substring(2, 4);
           let minuteIssued = issuedTime.substring(4, 6);
-          let compiledIssuedTime = `${year}-${month}-${dateIssued} ${hourIssued}:${minuteIssued}`;
+          let compiledIssuedTime = `${yearLine}-${monthLine}-${dateIssued} ${hourIssued}:${minuteIssued}`;
           let compiledValidFrom;
           let compiledValidUntil;
           let validity = "";
-          if (lineSplit[3].length == 9) {
+          if (lineSplit[3].length === 9) {
             validity = lineSplit[3];
           } else {
             validity = lineSplit[4];
           }
-          if (validity && validity.length == 9) {
+          if (validity && validity.length === 9) {
             let dateValidFrom = validity.substring(0, 2);
             let hourValidFrom = validity.substring(2, 4);
-            compiledValidFrom = `${year}-${month}-${dateValidFrom} ${hourValidFrom}:00`;
+            compiledValidFrom = `${yearLine}-${monthLine}-${dateValidFrom} ${hourValidFrom}:00`;
             let dateValidUntil = validity.substring(5, 7);
             let hourValidUntil = validity.substring(7, 9);
 
-            // check if hour 24 then change to 00
-            if (hourValidUntil == "24") {
+            if (hourValidUntil === "24") {
               hourValidUntil = "00";
+              let dUntil = parseInt(dateValidUntil, 10) + 1;
+              let mUntil = parseInt(monthLine, 10);
+              let yUntil = parseInt(yearLine, 10);
 
-              // plus 1 day to dateValidUntil but check first this month is 30 or 31 or is february (28 or 29)
-
-              if (
-                month == 1 ||
-                month == 3 ||
-                month == 5 ||
-                month == 7 ||
-                month == 8 ||
-                month == 10
-              ) {
-                if (dateValidUntil == "31") {
-                  dateValidUntil = "01";
-                } else {
-                  dateValidUntil = parseInt(dateValidUntil);
-                  dateValidUntil = dateValidUntil + 1;
-                  dateValidUntil = dateValidUntil.toString();
-                  if (dateValidUntil < 10) {
-                    dateValidUntil = "0" + dateValidUntil;
-                  }
-                }
-              } else if (month == 12) {
-                if (dateValidUntil == "31") {
-                  dateValidUntil = "01";
-                } else {
-                  dateValidUntil = parseInt(dateValidUntil);
-                  dateValidUntil = dateValidUntil + 1;
-                  dateValidUntil = dateValidUntil.toString();
-                  if (dateValidUntil < 10) {
-                    dateValidUntil = "0" + dateValidUntil;
-                  }
-                }
-              } else if (month == 2) {
-                const isLeapYear =
-                  (year % 4 == 0 && year % 100 != 0) || year % 400 == 0;
-                if (isLeapYear) {
-                  if (dateValidUntil == "29") {
-                    dateValidUntil = "01";
-                  } else {
-                    dateValidUntil = parseInt(dateValidUntil);
-                    dateValidUntil = dateValidUntil + 1;
-                    dateValidUntil = dateValidUntil.toString();
-                    if (dateValidUntil < 10) {
-                      dateValidUntil = "0" + dateValidUntil;
-                    }
-                  }
-                } else {
-                  if (dateValidUntil == "28") {
-                    dateValidUntil = "01";
-                  } else {
-                    dateValidUntil = parseInt(dateValidUntil);
-                    dateValidUntil = dateValidUntil + 1;
-                    dateValidUntil = dateValidUntil.toString();
-                    if (dateValidUntil < 10) {
-                      dateValidUntil = "0" + dateValidUntil;
-                    }
-                  }
+              const daysInMonth = new Date(yUntil, mUntil, 0).getDate();
+              if (dUntil > daysInMonth) {
+                dUntil = 1;
+                mUntil += 1;
+                if (mUntil > 12) {
+                  mUntil = 1;
+                  yUntil += 1;
                 }
               }
+              dateValidUntil = String(dUntil).padStart(2, "0");
+              monthLine = String(mUntil).padStart(2, "0");
+              yearLine = String(yUntil);
             }
 
-            if (dateValidFrom > dateValidUntil) {
-              if (month == 12) {
-                month = "01";
-                year = parseInt(year);
-                year = year + 1;
-                year = year.toString();
-              } else {
-                month = parseInt(month) + 1;
-                month = month.toString();
-                if (month < 10) {
-                  month = "0" + month;
-                }
+            if (parseInt(dateValidFrom, 10) > parseInt(dateValidUntil, 10)) {
+              let mUntil = parseInt(monthLine, 10) + 1;
+              let yUntil = parseInt(yearLine, 10);
+              if (mUntil > 12) {
+                mUntil = 1;
+                yUntil += 1;
               }
+              monthLine = String(mUntil).padStart(2, "0");
+              yearLine = String(yUntil);
             }
-            compiledValidUntil = `${year}-${month}-${dateValidUntil} ${hourValidUntil}:00`;
+            compiledValidUntil = `${yearLine}-${monthLine}-${dateValidUntil} ${hourValidUntil}:00`;
           } else {
             compiledValidFrom = null;
             compiledValidUntil = null;
           }
-          // console.log("valid_from :" + compiledValidFrom);
-          // console.log("valid_until :" + compiledValidUntil);
+
           const query = `INSERT INTO taf (
           data_code,
           type_code,
@@ -419,8 +371,10 @@ const decodeOnebyOne = (group, typeBerita) => {
           valid_until = VALUES(valid_until),
           data_text = VALUES(data_text),
           insert_time = VALUES(insert_time)`;
+
+          const finalDataCode = Array.isArray(dataCode) ? dataCode[0] : dataCode;
           const values = [
-            dataCode,
+            finalDataCode,
             type,
             regional,
             bulletin,
@@ -435,45 +389,43 @@ const decodeOnebyOne = (group, typeBerita) => {
             insert,
           ];
 
+          console.log(`[DB:START] [TAF] Inserting: ICAO=${icao}, DataCode=${finalDataCode}, Valid=${compiledValidFrom}..${compiledValidUntil}`);
           pool.query(
             query,
             values,
             (err, result) => {
-              console.log(result);
               if (err) {
-                console.log(err);
+                console.error(`[DB:ERROR] [TAF] Failed inserting ${icao} (${finalDataCode}):`, err.message, "| Values:", JSON.stringify(values));
+              } else {
+                const status = result?.affectedRows === 1 ? "INSERTED" : "UPDATED_DUPLICATE";
+                console.log(`[DB:SUCCESS] [TAF] Saved ${icao} (${finalDataCode}) -> ${status} (affected: ${result?.affectedRows})`);
               }
             },
           );
 
           try {
             if (regionalCode === "WIIX") {
+              console.log(`[WARN:DROP] [TAF:IDOP] Skipped IDOP for ${icao} due to regionalCode WIIX`);
               return;
             }
-            if (wiorwa == "WI" || wiorwa == "WA") {
-              const idopSend = idop(headerSandi + "\n" + line);
+            if (wiorwa === "WI" || wiorwa === "WA") {
+              console.log(`[IDOP:TRIGGER] [TAF] Uploading ${icao} to IDOP (Header: ${headerSandi})`);
+              idop(headerSandi + "\n" + line);
+            } else {
+              console.log(`[INFO:SKIP] [TAF:IDOP] Skipped non-Indonesian station ${icao} for IDOP`);
             }
           } catch (error) {
-            console.log(error);
+            console.error(`[IDOP:ERROR] [TAF] Failed sending ${icao} to IDOP:`, error.message || error);
           }
-
-          // if (wiorwa == "WI" || wiorwa == "WA") {
-          //   try {
-          //     if (regionalCode === "WIIX") {
-          //       return;
-          //     }
-          //     const idopSend = idop(headerSandi + "\n" + line);
-          //   } catch (error) {
-          //     console.log(error);
-          //   }
-          // }
+        } else {
+          console.warn(`[WARN:DROP] [TAF] Dropped ${icao} because invalid issuedTime: "${issuedTime}" in "${line}"`);
         }
       }
     });
-  } else if (typeBerita == "SIGMET") {
-    const lineHeader = group[0];
+  } else if (typeBerita === "SIGMET") {
     const line = [...group].slice(1).join(" ").replace(/\s+/g, " ").trim();
     if (line.includes("NIL") || !line.includes("SIGMET")) {
+      console.log(`[INFO:SKIP] [SIGMET] Skipped NIL or non-SIGMET body: "${line}"`);
       return;
     }
 
@@ -507,18 +459,18 @@ const decodeOnebyOne = (group, typeBerita) => {
       let date_from = validMatch[1].substring(0, 2);
       let date_until = validMatch[2].substring(0, 2);
 
-      let validFromMonth = month;
-      let validFromYear = year;
-      let validUntilMonth = month;
-      let validUntilYear = year;
+      let validFromMonth = defaultMonth;
+      let validFromYear = defaultYear;
+      let validUntilMonth = defaultMonth;
+      let validUntilYear = defaultYear;
 
-      if (parseInt(date_from) > parseInt(date_until)) {
-        if (parseInt(month) < 12) {
-          let m = parseInt(month) + 1;
+      if (parseInt(date_from, 10) > parseInt(date_until, 10)) {
+        if (parseInt(defaultMonth, 10) < 12) {
+          let m = parseInt(defaultMonth, 10) + 1;
           validUntilMonth = m < 10 ? "0" + m : m.toString();
         } else {
           validUntilMonth = "01";
-          validUntilYear = (parseInt(year) + 1).toString();
+          validUntilYear = (parseInt(defaultYear, 10) + 1).toString();
         }
       }
 
@@ -563,13 +515,19 @@ const decodeOnebyOne = (group, typeBerita) => {
         insert,
       ];
 
+      console.log(`[DB:START] [SIGMET] Inserting: ICAO=${icao}, ATS=${ats_code}, Seq=${sequence_code}, DataCode=${dataCode}`);
       pool.query(query, values, (err, result) => {
         if (err) {
-          console.error("Error inserting SIGMET:", err);
+          console.error(`[DB:ERROR] [SIGMET] Failed inserting ${icao} (${dataCode}):`, err.message);
+        } else {
+          const status = result?.affectedRows === 1 ? "INSERTED" : "UPDATED_DUPLICATE";
+          console.log(`[DB:SUCCESS] [SIGMET] Saved ${icao} (${dataCode}) -> ${status} (affected: ${result?.affectedRows})`);
         }
       });
+    } else {
+      console.warn(`[WARN:DROP] [SIGMET] Dropped SIGMET due to missing VALID range: "${line}"`);
     }
-  } else if (typeBerita == "FN") {
+  } else if (typeBerita === "FN") {
     const rawCode = Array.isArray(sliceGroup[1]) ? sliceGroup[1].join("\n") : String(sliceGroup[1]);
     let id_code = `${headerSandi}-${rawCode}`;
     let insert = moment().format("YYYY-MM-DD HH:mm:ss");
@@ -585,17 +543,17 @@ const decodeOnebyOne = (group, typeBerita) => {
         code = VALUES(code),
         time = VALUES(time)`;
 
+    console.log(`[DB:START] [FN] Inserting space weather bulletin: Header=${headerSandi}, IdCode=${id_code}`);
     pool.query(query, [id_code, headerSandi, rawCode, insert], (err, result) => {
       if (err) {
-        console.error("Error inserting space weather:", err);
+        console.error(`[DB:ERROR] [FN] Failed inserting space weather (${id_code}):`, err.message);
+      } else {
+        const status = result?.affectedRows === 1 ? "INSERTED" : "UPDATED_DUPLICATE";
+        console.log(`[DB:SUCCESS] [FN] Saved space weather (${id_code}) -> ${status} (affected: ${result?.affectedRows})`);
       }
     });
-  } else if (typeBerita == "SYNOP") {
-    if (regionalCode == "WIIL") {
-      // sendWhatsapp(`Data Sandi WIIL ${group}`, "6282111119138");
-    }
-
-    // sendWhatsapp(`${group} with header ${headerSandi} and icao ${regionalCode}`, "6282111119138");
+  } else if (typeBerita === "SYNOP") {
+    console.log(`[INFO:SYNOP] Processed SYNOP bulletin for regionalCode ${regionalCode}`);
   }
 };
 
@@ -607,8 +565,8 @@ const pool = mysql.createPool({
   port: process.env.DB_PORT,
   waitForConnections: true,
   connectionLimit: 10,
-  maxIdle: 10, // max idle connections, the default value is the same as `connectionLimit`
-  idleTimeout: 60000, // idle connections timeout, in milliseconds, the default value 60000
+  maxIdle: 10,
+  idleTimeout: 60000,
   queueLimit: 0,
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
@@ -625,7 +583,7 @@ const getConnection = () => {
 
 const sendDatabase = async (data) => {
   const connection = await getConnection();
-  console.log("connected as id " + connection.threadId);
+  console.log("[DB:POOL] Connected with connection threadId " + connection.threadId);
 };
 
 export default send;
